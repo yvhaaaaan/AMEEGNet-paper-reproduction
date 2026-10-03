@@ -7,6 +7,7 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
     p.add_argument("--strict", action="store_true")
+    p.add_argument("--paper-pooling", action="store_true")
     p.add_argument("--out", default="results/all_500")
     a = p.parse_args()
     out = Path(a.out)
@@ -20,6 +21,8 @@ def main():
                "--device", a.device, "--out", str(path)]
         if a.strict:
             cmd.append("--strict")
+        if a.paper_pooling:
+            cmd.append("--paper-pooling")
         print("running", sid, flush=True)
         subprocess.run(cmd, check=True)
         result = json.loads(path.read_text(encoding="utf-8"))

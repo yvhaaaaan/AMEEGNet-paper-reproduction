@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.3 - 2026-10-03
+
+- Added the `--paper-pooling` option to the nine-subject runner.
+- Fixed batch-run forwarding so the selected architecture is recorded for
+  every subject.
+
 ## v1.0.2 - 2026-10-03
 
 - Added an explicit `--paper-pooling` switch for the standard EEGNet

@@ -1,0 +1,101 @@
+import torch
+from torch import nn
+import torch.nn.functional as F
+
+
+def same_time(x, kernel):
+    left = kernel // 2 - 1 if kernel % 2 == 0 else kernel // 2
+    right = kernel // 2
+    return F.pad(x, (left, right, 0, 0))
+
+
+class ECA(nn.Module):
+    def __init__(self, channels, kernel=3):
+        super().__init__()
+        self.conv = nn.Conv1d(1, 1, kernel, padding=kernel // 2, bias=False)
+
+    def forward(self, x):
+        w = x.mean(dim=(2, 3), keepdim=False).unsqueeze(1)
+        w = torch.sigmoid(self.conv(w)).transpose(1, 2).unsqueeze(-1)
+        return x * w
+
+
+class Branch(nn.Module):
+    def __init__(self, channels, f1, kernel, depth_in=None, sep_in=None,
+                 pool=True, dropout=0.25, bn_first=True, norm_then_activation=True):
+        super().__init__()
+        depth_in = depth_in or f1
+        sep_in = sep_in or depth_in * 2
+        self.temporal = nn.Conv2d(1, f1, (1, kernel), bias=False)
+        self.bn_t = nn.BatchNorm2d(f1) if bn_first else nn.Identity()
+        self.depth = nn.Conv2d(depth_in, depth_in * 2, (channels, 1),
+                               groups=depth_in, bias=False)
+        self.bn_d = nn.BatchNorm2d(depth_in * 2)
+        self.sep_dw = nn.Conv2d(sep_in, sep_in, (1, 16), groups=sep_in, bias=False)
+        self.sep_pw = nn.Conv2d(sep_in, f1 * 2, 1, bias=False)
+        self.bn_s = nn.BatchNorm2d(f1 * 2)
+        self.norm_then_activation = norm_then_activation
+        self.pool1 = nn.AvgPool2d((1, 4)) if pool else nn.Identity()
+        self.pool2 = nn.AvgPool2d((1, 8)) if pool else nn.Identity()
+        self.drop = nn.Dropout(dropout) if dropout else nn.Identity()
+
+    def temporal_out(self, x):
+        return self.bn_t(self.temporal(same_time(x, self.temporal.kernel_size[1])))
+
+    def from_temporal(self, h, temporal_fusion=None, depth_fusion=None):
+        if temporal_fusion is not None:
+            h = torch.cat((temporal_fusion, h), dim=1)
+        h = self.depth(h)
+        h = self.bn_d(h) if self.norm_then_activation else self.bn_d(F.elu(h))
+        h = self.drop(F.elu(h) if self.norm_then_activation else h)
+        depth_out = h
+        if depth_fusion is not None:
+            h = torch.cat((depth_fusion, h), dim=1)
+        h = self.pool1(h)
+        h = same_time(h, 16)
+        h = self.sep_pw(self.sep_dw(h))
+        h = self.bn_s(h) if self.norm_then_activation else self.bn_s(F.elu(h))
+        h = self.drop(F.elu(h) if self.norm_then_activation else h)
+        return self.pool2(h), depth_out
+
+    def forward(self, x, temporal_fusion=None, depth_fusion=None):
+        return self.from_temporal(self.temporal_out(x), temporal_fusion, depth_fusion)
+
+
+class AMEEGNet(nn.Module):
+    def __init__(self, channels=22, samples=1125, classes=4,
+                 pool=True, dropout=0.25, fusion=True, eca=True,
+                 bn_first=True, norm_then_activation=True):
+        super().__init__()
+        self.fusion = fusion
+        self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
+                         bn_first=bn_first, norm_then_activation=norm_then_activation)
+        self.b2 = Branch(channels, 8, 32, depth_in=12, sep_in=24,
+                         pool=pool, dropout=dropout, bn_first=bn_first,
+                         norm_then_activation=norm_then_activation)
+        self.b3 = Branch(channels, 16, 64, depth_in=16, sep_in=56,
+                         pool=pool, dropout=dropout, bn_first=bn_first,
+                         norm_then_activation=norm_then_activation)
+        self.attn = nn.ModuleList([ECA(8), ECA(16), ECA(32)])
+        with torch.no_grad():
+            dummy = torch.zeros(2, 1, channels, samples)
+            n = torch.cat(self._features(dummy), dim=1).flatten(1).shape[1]
+        self.head = nn.Sequential(nn.Linear(n, 32), nn.ELU(), nn.Dropout(dropout),
+                                  nn.Linear(32, classes))
+
+    def _features(self, x):
+        t1 = self.b1.temporal_out(x)
+        t2 = self.b2.temporal_out(x)
+        t3 = self.b3.temporal_out(x)
+        h1, _ = self.b1.from_temporal(t1)
+        h2, d2 = self.b2.from_temporal(t2, temporal_fusion=t1 if self.fusion else None)
+        h3, _ = self.b3.from_temporal(t3, depth_fusion=d2 if self.fusion else None)
+        out = [h1, h2, h3]
+        return [a(o) if self.training or True else o for a, o in zip(self.attn, out)] if self.fusion else out
+
+    def forward(self, x):
+        if x.ndim == 3:
+            x = x.unsqueeze(1)
+        if x.shape[1:] != (1, 22, 1125):
+            raise ValueError(f"expected (N,22,1125), got {tuple(x.shape)}")
+        return self.head(torch.cat(self._features(x), dim=1).flatten(1))

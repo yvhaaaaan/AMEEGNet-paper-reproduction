@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local datasets and generated model artifacts
+data/*.npz
+results/**/*.pt
+results/**/*.npz
+results/**/*.json
+results/**/*.log
+
+# Keep small Markdown audit summaries under results/ tracked.
+
+# Local environment/editor files
+.venv/
+venv/
+.idea/
+.vscode/
+*.tmp
+*.bak

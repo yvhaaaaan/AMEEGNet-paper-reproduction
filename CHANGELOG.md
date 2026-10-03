@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.2 - 2026-10-03
+
+- Added an explicit `--paper-pooling` switch for the standard EEGNet
+  average-pooling and dropout path, without changing the strict default.
+- Recorded the complete 1000-epoch no-temporal-BN A01 diagnostic separately.
+
 ## v1.0.1 - 2026-10-03
 
 - Recorded the corrected-protocol A01 1000-epoch run.

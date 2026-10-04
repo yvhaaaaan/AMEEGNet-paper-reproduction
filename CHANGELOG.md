@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.22 - 2026-10-04
+
+- Forwarded temporal-BN and normalization-order switches through the
+  nine-subject runner so the literal architecture audit can run consistently.
+
 # v1.0.21 - 2026-10-04
 
 - Archived the deterministic v1.0.20 no-head-ELU batch: 70.25% +/- 8.38%.

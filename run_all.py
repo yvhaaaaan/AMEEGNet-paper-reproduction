@@ -15,6 +15,8 @@ def main():
     p.add_argument("--dropout", type=float, default=None)
     p.add_argument("--dropout-after-pool", action="store_true")
     p.add_argument("--max-norm", action="store_true")
+    p.add_argument("--no-bn-first", action="store_true")
+    p.add_argument("--elu-before-bn", action="store_true")
     p.add_argument("--no-head-elu", action="store_true")
     p.add_argument("--reverse-sessions", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
@@ -45,6 +47,10 @@ def main():
             cmd.append("--dropout-after-pool")
         if a.max_norm:
             cmd.append("--max-norm")
+        if a.no_bn_first:
+            cmd.append("--no-bn-first")
+        if a.elu_before_bn:
+            cmd.append("--elu-before-bn")
         if a.no_head_elu:
             cmd.append("--no-head-elu")
         if a.reverse_sessions:

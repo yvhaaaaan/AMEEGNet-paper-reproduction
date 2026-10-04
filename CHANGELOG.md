@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.24 - 2026-10-04
+
+- Added a bidirectional Session audit and archived the E-to-T batch. The
+  paired T/E mean is reported descriptively, not substituted for the paper's
+  unspecified evaluation protocol.
+
 # v1.0.23 - 2026-10-04
 
 - Archived the deterministic no-temporal-BN batch: 72.61% +/- 8.81%, still

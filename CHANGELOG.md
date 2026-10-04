@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.7 - 2026-10-04
+
+- Added batch-run forwarding for the no-fusion/no-ECA ablation.
+
 ## v1.0.6 - 2026-10-04
 
 - Fixed ablation-only channel construction when fusion is disabled.

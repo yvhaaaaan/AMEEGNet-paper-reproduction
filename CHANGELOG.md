@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.6 - 2026-10-04
+
+- Fixed ablation-only channel construction when fusion is disabled.
+- The default fusion path is unchanged; the failed v1.0.5 attempt produced
+  no result artifact and is retained as an audit event.
+
 ## v1.0.5 - 2026-10-04
 
 - Added explicit fusion and ECA switches to reproduce the paper's ablation

@@ -71,10 +71,13 @@ class AMEEGNet(nn.Module):
         self.use_eca = eca
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
                          bn_first=bn_first, norm_then_activation=norm_then_activation)
-        self.b2 = Branch(channels, 8, 32, depth_in=12, sep_in=24,
+        b2_depth_in = 12 if fusion else 8
+        b2_sep_in = 24 if fusion else 16
+        b3_sep_in = 56 if fusion else 32
+        self.b2 = Branch(channels, 8, 32, depth_in=b2_depth_in, sep_in=b2_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation)
-        self.b3 = Branch(channels, 16, 64, depth_in=16, sep_in=56,
+        self.b3 = Branch(channels, 16, 64, depth_in=16, sep_in=b3_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation)
         self.attn = nn.ModuleList([ECA(8), ECA(16), ECA(32)])

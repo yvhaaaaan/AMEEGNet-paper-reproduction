@@ -7,6 +7,10 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
     p.add_argument("--strict", action="store_true")
+    p.add_argument("--deterministic", action="store_true")
+    p.add_argument("--test-evaluation", choices=("final", "none", "each-epoch"),
+                   default="final")
+    p.add_argument("--validation-fraction", type=float, default=None)
     p.add_argument("--paper-pooling", action="store_true")
     p.add_argument("--dropout", type=float, default=None)
     p.add_argument("--dropout-after-pool", action="store_true")
@@ -28,6 +32,11 @@ def main():
                "--device", a.device, "--out", str(path)]
         if a.strict:
             cmd.append("--strict")
+        if a.deterministic:
+            cmd.append("--deterministic")
+        cmd.extend(["--test-evaluation", a.test_evaluation])
+        if a.validation_fraction is not None:
+            cmd.extend(["--validation-fraction", str(a.validation_fraction)])
         if a.paper_pooling:
             cmd.append("--paper-pooling")
         if a.dropout is not None:

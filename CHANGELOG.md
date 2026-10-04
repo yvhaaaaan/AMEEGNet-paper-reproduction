@@ -1,11 +1,20 @@
 # Changelog
 
+# v1.0.17 - 2026-10-04
+
+- Added final-only deterministic batch forwarding for the standard
+  EEGNet-pooling hypothesis.
+- Recorded the A01 candidate run separately before starting the nine-subject
+  batch.
+
 # v1.0.16 - 2026-10-04
 
 - Archived the clean deterministic A01 strict run at v1.0.15: 50.35% final
   target-session accuracy after 1000 epochs, with one final test evaluation.
 - Defined the next controlled audit as the standard EEGNet pooling/dropout
   implementation hypothesis; it remains separate from the v1.7 method.
+- Updated the nine-subject runner to forward deterministic and test-evaluation
+  controls to each subject process.
 
 # v1.0.15 - 2026-10-04
 

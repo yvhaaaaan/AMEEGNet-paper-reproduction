@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.18 - 2026-10-04
+
+- Updated the batch auditor for final-only target-session evaluation and
+  included per-subject configuration, runtime, and artifact checks.
+
 # v1.0.17 - 2026-10-04
 
 - Added final-only deterministic batch forwarding for the standard

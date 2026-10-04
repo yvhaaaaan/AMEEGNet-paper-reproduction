@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.14 - 2026-10-04
+
+- Audited pooled/post-pooling-dropout reproduction batches for seed 42 and
+  seed 1.
+- Recorded the paper-only reproduction boundary and current gap to the
+  published mean.
+
 ## v1.0.13 - 2026-10-04
 
 - Added an explicit T/E versus E/T session-direction comparison.

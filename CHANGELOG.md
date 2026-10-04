@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.4 - 2026-10-04
+
+- Added reproducible nine-subject artifact auditing and SHA-256 inventory.
+- Corrected test-evaluation and pooling-hypothesis documentation.
+- Preserved v1.0.3 training results without retraining or selecting epochs.
+
 ## v1.0.3 - 2026-10-03
 
 - Added the `--paper-pooling` option to the nine-subject runner.

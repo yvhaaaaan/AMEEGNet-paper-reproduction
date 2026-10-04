@@ -68,6 +68,7 @@ class AMEEGNet(nn.Module):
                  bn_first=True, norm_then_activation=True):
         super().__init__()
         self.fusion = fusion
+        self.use_eca = eca
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
                          bn_first=bn_first, norm_then_activation=norm_then_activation)
         self.b2 = Branch(channels, 8, 32, depth_in=12, sep_in=24,
@@ -91,7 +92,7 @@ class AMEEGNet(nn.Module):
         h2, d2 = self.b2.from_temporal(t2, temporal_fusion=t1 if self.fusion else None)
         h3, _ = self.b3.from_temporal(t3, depth_fusion=d2 if self.fusion else None)
         out = [h1, h2, h3]
-        return [a(o) if self.training or True else o for a, o in zip(self.attn, out)] if self.fusion else out
+        return [a(o) for a, o in zip(self.attn, out)] if self.use_eca else out
 
     def forward(self, x):
         if x.ndim == 3:

@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.5 - 2026-10-04
+
+- Added explicit fusion and ECA switches to reproduce the paper's ablation
+  structures without altering the default AMEEGNet path.
+
 ## v1.0.4 - 2026-10-04
 
 - Added reproducible nine-subject artifact auditing and SHA-256 inventory.

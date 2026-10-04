@@ -1,5 +1,13 @@
 # Changelog
 
+# v1.0.23 - 2026-10-04
+
+- Archived the deterministic no-temporal-BN batch: 72.61% +/- 8.81%, still
+  8.56 percentage points below the paper mean.
+- Defined the next protocol audit as the reverse E-to-T Session direction;
+  the paper says one Session trains and the other evaluates but does not state
+  the direction or whether both directions are averaged.
+
 # v1.0.22 - 2026-10-04
 
 - Forwarded temporal-BN and normalization-order switches through the

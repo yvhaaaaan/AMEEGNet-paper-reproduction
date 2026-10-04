@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.21 - 2026-10-04
+
+- Archived the deterministic v1.0.20 no-head-ELU batch: 70.25% +/- 8.38%.
+- Defined the next literal architecture audit without temporal-convolution
+  BatchNorm, because the paper explicitly places BN/ELU after the second and
+  third layers but does not specify BN after the first layer.
+
 # v1.0.20 - 2026-10-04
 
 - Archived the deterministic v1.0.19 nine-subject max-norm batch: 71.60% +/-

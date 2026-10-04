@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.12 - 2026-10-04
+
+- Added an explicit comparison switch for the inferred Dense(32) ELU.
+
 ## v1.0.11 - 2026-10-04
 
 - Added optional standard EEGNet max-norm projection for spatial depthwise

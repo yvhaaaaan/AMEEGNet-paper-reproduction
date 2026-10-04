@@ -28,6 +28,8 @@ def main():
                    help="apply branch dropout after each EEGNet pooling layer")
     p.add_argument("--max-norm", action="store_true",
                    help="apply standard EEGNet spatial=1 and classifier=0.25 constraints")
+    p.add_argument("--no-head-elu", action="store_true",
+                   help="remove the inferred ELU after Dense(32)")
     p.add_argument("--no-fusion", action="store_true",
                    help="disable the two paper-described fusion transmissions")
     p.add_argument("--no-eca", action="store_true",
@@ -55,7 +57,8 @@ def main():
                      bn_first=not a.no_bn_first,
                      norm_then_activation=not a.elu_before_bn,
                      fusion=not a.no_fusion, eca=not a.no_eca,
-                     dropout_after_pool=a.dropout_after_pool).to(device)
+                     dropout_after_pool=a.dropout_after_pool,
+                     head_elu=not a.no_head_elu).to(device)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
            if a.strict else torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4))
     loss_fn = nn.CrossEntropyLoss(label_smoothing=0.1 if not a.strict else 0.0)
@@ -93,7 +96,7 @@ def main():
         model.load_state_dict(best[1])
     model.eval()
     with torch.no_grad(): pred=model(torch.from_numpy(xte).to(device)).argmax(1).cpu().numpy()
-    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"dropout_after_pool":a.dropout_after_pool,"max_norm":a.max_norm,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
+    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"dropout_after_pool":a.dropout_after_pool,"max_norm":a.max_norm,"head_elu":not a.no_head_elu,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
     result['training_protocol'] = {'optimizer':type(opt).__name__, 'lr':1e-3,
         'weight_decay':opt.defaults['weight_decay'], 'betas':opt.defaults['betas'],
         'eps':opt.defaults['eps'], 'gradient_clip_max_norm':None if a.strict else 5.0,

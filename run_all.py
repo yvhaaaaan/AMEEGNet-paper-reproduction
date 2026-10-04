@@ -11,6 +11,7 @@ def main():
     p.add_argument("--dropout", type=float, default=None)
     p.add_argument("--dropout-after-pool", action="store_true")
     p.add_argument("--max-norm", action="store_true")
+    p.add_argument("--no-head-elu", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--out", default="results/all_500")
@@ -34,6 +35,8 @@ def main():
             cmd.append("--dropout-after-pool")
         if a.max_norm:
             cmd.append("--max-norm")
+        if a.no_head_elu:
+            cmd.append("--no-head-elu")
         if a.no_fusion:
             cmd.append("--no-fusion")
         if a.no_eca:

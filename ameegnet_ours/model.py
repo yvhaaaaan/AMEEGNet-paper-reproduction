@@ -77,7 +77,7 @@ class AMEEGNet(nn.Module):
     def __init__(self, channels=22, samples=1125, classes=4,
                  pool=True, dropout=0.25, fusion=True, eca=True,
                  bn_first=True, norm_then_activation=True,
-                 dropout_after_pool=False):
+                 dropout_after_pool=False, head_elu=True):
         super().__init__()
         self.fusion = fusion
         self.use_eca = eca
@@ -99,8 +99,11 @@ class AMEEGNet(nn.Module):
         with torch.no_grad():
             dummy = torch.zeros(2, 1, channels, samples)
             n = torch.cat(self._features(dummy), dim=1).flatten(1).shape[1]
-        self.head = nn.Sequential(nn.Linear(n, 32), nn.ELU(), nn.Dropout(dropout),
-                                  nn.Linear(32, classes))
+        head = [nn.Linear(n, 32)]
+        if head_elu:
+            head.append(nn.ELU())
+        head.extend([nn.Dropout(dropout), nn.Linear(32, classes)])
+        self.head = nn.Sequential(*head)
 
     def _features(self, x):
         t1 = self.b1.temporal_out(x)

@@ -22,6 +22,8 @@ def main():
                    help="use ELU before BN in depthwise and separable blocks")
     p.add_argument("--paper-pooling", action="store_true",
                    help="retain standard EEGNet average pooling and dropout")
+    p.add_argument("--dropout", type=float, default=None,
+                   help="override branch/classifier dropout probability")
     p.add_argument("--no-fusion", action="store_true",
                    help="disable the two paper-described fusion transmissions")
     p.add_argument("--no-eca", action="store_true",
@@ -44,7 +46,8 @@ def main():
         fit, val = train_test_split(np.arange(len(ytr)), test_size=0.15,
                                     stratify=ytr, random_state=a.seed)
     use_pool = a.paper_pooling or not a.strict
-    model = AMEEGNet(pool=use_pool, dropout=0.25 if a.paper_pooling else (0.0 if a.strict else 0.25),
+    dropout = a.dropout if a.dropout is not None else (0.25 if (a.paper_pooling or not a.strict) else 0.0)
+    model = AMEEGNet(pool=use_pool, dropout=dropout,
                      bn_first=not a.no_bn_first,
                      norm_then_activation=not a.elu_before_bn,
                      fusion=not a.no_fusion, eca=not a.no_eca).to(device)
@@ -83,7 +86,7 @@ def main():
         model.load_state_dict(best[1])
     model.eval()
     with torch.no_grad(): pred=model(torch.from_numpy(xte).to(device)).argmax(1).cpu().numpy()
-    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
+    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
     result['training_protocol'] = {'optimizer':type(opt).__name__, 'lr':1e-3,
         'weight_decay':opt.defaults['weight_decay'], 'betas':opt.defaults['betas'],
         'eps':opt.defaults['eps'], 'gradient_clip_max_norm':None if a.strict else 5.0,

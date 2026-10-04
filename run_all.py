@@ -8,6 +8,7 @@ def main():
     p.add_argument("--device", default="cuda")
     p.add_argument("--strict", action="store_true")
     p.add_argument("--paper-pooling", action="store_true")
+    p.add_argument("--dropout", type=float, default=None)
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--out", default="results/all_500")
@@ -25,6 +26,8 @@ def main():
             cmd.append("--strict")
         if a.paper_pooling:
             cmd.append("--paper-pooling")
+        if a.dropout is not None:
+            cmd.extend(["--dropout", str(a.dropout)])
         if a.no_fusion:
             cmd.append("--no-fusion")
         if a.no_eca:

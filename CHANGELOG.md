@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.9 - 2026-10-04
+
+- Added explicit dropout override support for controlled EEGNet protocol
+  comparisons and batch forwarding.
+
 ## v1.0.8 - 2026-10-04
 
 - Corrected the batch audit release metadata and included fusion/ECA settings

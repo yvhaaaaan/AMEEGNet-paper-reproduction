@@ -1,3 +1,5 @@
+import math
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -23,18 +25,18 @@ class ECA(nn.Module):
 class Branch(nn.Module):
     def __init__(self, channels, f1, kernel, depth_in=None, sep_in=None,
                  pool=True, dropout=0.25, bn_first=True, norm_then_activation=True,
-                 dropout_after_pool=False):
+                 dropout_after_pool=False, bn_eps=1e-5, bn_momentum=0.1):
         super().__init__()
         depth_in = depth_in or f1
         sep_in = sep_in or depth_in * 2
         self.temporal = nn.Conv2d(1, f1, (1, kernel), bias=False)
-        self.bn_t = nn.BatchNorm2d(f1) if bn_first else nn.Identity()
+        self.bn_t = nn.BatchNorm2d(f1, eps=bn_eps, momentum=bn_momentum) if bn_first else nn.Identity()
         self.depth = nn.Conv2d(depth_in, depth_in * 2, (channels, 1),
                                groups=depth_in, bias=False)
-        self.bn_d = nn.BatchNorm2d(depth_in * 2)
+        self.bn_d = nn.BatchNorm2d(depth_in * 2, eps=bn_eps, momentum=bn_momentum)
         self.sep_dw = nn.Conv2d(sep_in, sep_in, (1, 16), groups=sep_in, bias=False)
         self.sep_pw = nn.Conv2d(sep_in, f1 * 2, 1, bias=False)
-        self.bn_s = nn.BatchNorm2d(f1 * 2)
+        self.bn_s = nn.BatchNorm2d(f1 * 2, eps=bn_eps, momentum=bn_momentum)
         self.norm_then_activation = norm_then_activation
         self.dropout_after_pool = dropout_after_pool
         self.pool1 = nn.AvgPool2d((1, 4)) if pool else nn.Identity()
@@ -77,24 +79,32 @@ class AMEEGNet(nn.Module):
     def __init__(self, channels=22, samples=1125, classes=4,
                  pool=True, dropout=0.25, fusion=True, eca=True,
                  bn_first=True, norm_then_activation=True,
-                 dropout_after_pool=False, head_elu=True):
+                 dropout_after_pool=False, head_elu=True,
+                 bn_eps=1e-5, bn_momentum=0.1):
         super().__init__()
+        if not math.isfinite(bn_eps) or bn_eps <= 0:
+            raise ValueError("bn_eps must be finite and positive")
+        if not math.isfinite(bn_momentum) or not 0 < bn_momentum <= 1:
+            raise ValueError("bn_momentum must be finite and in (0,1]")
         self.fusion = fusion
         self.use_eca = eca
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
                          bn_first=bn_first, norm_then_activation=norm_then_activation,
-                         dropout_after_pool=dropout_after_pool)
+                         dropout_after_pool=dropout_after_pool,
+                         bn_eps=bn_eps, bn_momentum=bn_momentum)
         b2_depth_in = 12 if fusion else 8
         b2_sep_in = 24 if fusion else 16
         b3_sep_in = 56 if fusion else 32
         self.b2 = Branch(channels, 8, 32, depth_in=b2_depth_in, sep_in=b2_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation,
-                         dropout_after_pool=dropout_after_pool)
+                         dropout_after_pool=dropout_after_pool,
+                         bn_eps=bn_eps, bn_momentum=bn_momentum)
         self.b3 = Branch(channels, 16, 64, depth_in=16, sep_in=b3_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation,
-                         dropout_after_pool=dropout_after_pool)
+                         dropout_after_pool=dropout_after_pool,
+                         bn_eps=bn_eps, bn_momentum=bn_momentum)
         self.attn = nn.ModuleList([ECA(8), ECA(16), ECA(32)])
         # All branches preserve time in their convolutions.  Pooling therefore
         # changes 1125 to floor((floor((1125-4)/4+1)-8)/8+1)=35.

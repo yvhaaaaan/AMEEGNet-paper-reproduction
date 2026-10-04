@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 import platform
 import random
@@ -30,17 +31,28 @@ def file_sha256(path):
 
 
 def git_metadata():
+    repository = Path(__file__).resolve().parent
     try:
         commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+            ["git", "rev-parse", "HEAD"], cwd=repository,
+            text=True, stderr=subprocess.DEVNULL
         ).strip()
         dirty = bool(subprocess.check_output(
-            ["git", "status", "--porcelain"], text=True,
+            ["git", "status", "--porcelain"], cwd=repository, text=True,
             stderr=subprocess.DEVNULL
         ).strip())
     except (OSError, subprocess.CalledProcessError):
         commit, dirty = None, None
     return commit, dirty
+
+
+def gradient_norm(model):
+    norms = [parameter.grad.detach().norm(2) for parameter in model.parameters()
+             if parameter.grad is not None]
+    value = torch.stack(norms).norm(2)
+    if not torch.isfinite(value):
+        raise FloatingPointError("Non-finite gradient norm")
+    return float(value.item())
 
 
 def configure_reproducibility(seed, deterministic):
@@ -91,6 +103,11 @@ def main():
                    default="final",
                    help="when to evaluate the held-out target session")
     p.add_argument("--no-bn-first", action="store_true")
+    p.add_argument("--bn-eps", type=float, default=1e-5)
+    p.add_argument("--bn-momentum", type=float, default=0.1,
+                   help="PyTorch weight of the new batch statistics, not Keras momentum")
+    p.add_argument("--log-every", type=int, default=100)
+    p.add_argument("--checkpoint-every", type=int, default=0)
     p.add_argument("--elu-before-bn", action="store_true")
     p.add_argument("--paper-pooling", action="store_true")
     p.add_argument("--dropout", type=float, default=None)
@@ -103,9 +120,22 @@ def main():
     p.add_argument("--out", default="results/s01.json")
     a = p.parse_args()
     out = Path(a.out)
+    if a.epochs <= 0 or a.log_every < 0 or a.checkpoint_every < 0:
+        raise ValueError("epochs must be positive and log/checkpoint intervals nonnegative")
+    if a.dropout is not None and (not math.isfinite(a.dropout) or not 0 <= a.dropout < 1):
+        raise ValueError("dropout must be finite and in [0,1)")
+    checkpoint_dir = out.parent / (out.stem + "_checkpoints")
     artifacts = [out, out.with_suffix('.pt'), out.with_suffix('.npz')]
     if any(path.exists() for path in artifacts):
         raise FileExistsError(f"Refusing to overwrite experiment artifacts: {out}")
+    if a.checkpoint_every and checkpoint_dir.exists():
+        raise FileExistsError(f"Refusing to overwrite checkpoints: {checkpoint_dir}")
+    commit, dirty = git_metadata()
+    repository = Path(__file__).resolve().parent
+    version = (repository / "VERSION").read_text(encoding="utf-8").strip()
+    data_digest = file_sha256(a.data)
+    source_hashes = {name: file_sha256(repository / name) for name in
+                     ("run_s01.py", "ameegnet_ours/model.py", "ameegnet_ours/data.py")}
 
     configure_reproducibility(a.seed, a.deterministic)
     device = torch.device(a.device if a.device != "auto" else
@@ -141,6 +171,7 @@ def main():
         fusion=not a.no_fusion, eca=not a.no_eca,
         dropout_after_pool=a.dropout_after_pool,
         head_elu=not a.no_head_elu,
+        bn_eps=a.bn_eps, bn_momentum=a.bn_momentum,
     ).to(device)
     initial_fingerprint = state_fingerprint(model)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
@@ -157,10 +188,13 @@ def main():
     history = []
     test_evaluations = 0
     t0 = time.perf_counter()
+    if a.checkpoint_every:
+        checkpoint_dir.mkdir(parents=True)
     for ep in range(1, a.epochs + 1):
         model.train()
         total = 0.0
         preds, ys = [], []
+        grad_norms = []
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
             opt.zero_grad(set_to_none=True)
@@ -169,6 +203,7 @@ def main():
             if not torch.isfinite(loss):
                 raise FloatingPointError(f"Non-finite loss at epoch {ep}")
             loss.backward()
+            grad_norms.append(gradient_norm(model))
             if not a.strict:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
@@ -193,34 +228,54 @@ def main():
             test_evaluations += 1
         history.append({"epoch": ep, "train_loss": train_loss,
                         "train_acc": train_acc, "val_loss": val_loss,
-                        "val_acc": val_acc, "test_acc": test_acc})
+                        "val_acc": val_acc, "test_acc": test_acc,
+                        "gradient_norm_mean": float(np.mean(grad_norms)),
+                        "gradient_norm_max": float(np.max(grad_norms))})
+        if a.log_every and (ep % a.log_every == 0 or ep == a.epochs):
+            print(json.dumps(history[-1]), flush=True)
+        if a.checkpoint_every and (ep % a.checkpoint_every == 0 or ep == a.epochs):
+            checkpoint = checkpoint_dir / f"epoch_{ep:04d}.pt"
+            torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),
+                        "epoch": ep, "args": vars(a), "git_commit": commit,
+                        "data_sha256": data_digest, "loader_rng": gen.get_state(),
+                        "torch_rng": torch.get_rng_state(),
+                        "cuda_rng": torch.cuda.get_rng_state_all() if device.type == "cuda" else [],
+                        "numpy_rng": np.random.get_state(), "python_rng": random.getstate(),
+                        "fit_indices": fit, "validation_indices": val}, checkpoint)
 
     if best[1] is not None and not a.strict:
         model.load_state_dict(best[1])
+    final_val_loss = final_val_acc = None
+    val_pred = np.array([], dtype=np.int64)
+    if val is not None:
+        final_val_loss, final_val_acc, val_pred = evaluate(
+            model, xtr[val], ytr[val], device, loss_fn
+        )
     final_test_acc = None
     final_pred = np.array([], dtype=np.int64)
     if a.test_evaluation != "none":
         _, final_test_acc, final_pred = evaluate(model, xte, yte, device, loss_fn)
         test_evaluations += 1
     elapsed = time.perf_counter() - t0
-    commit, dirty = git_metadata()
-    version_path = Path(__file__).with_name("VERSION")
     result = {
-        "version": version_path.read_text(encoding="utf-8").strip()
-        if version_path.exists() else None,
+        "version": version,
         "git_commit": commit, "git_dirty": dirty,
         "data_path": str(Path(a.data).resolve()),
-        "data_sha256": file_sha256(a.data),
+        "data_sha256": data_digest, "source_sha256": source_hashes,
         "strict": a.strict, "paper_pooling": a.paper_pooling,
         "dropout": dropout, "dropout_after_pool": a.dropout_after_pool,
         "max_norm": a.max_norm, "head_elu": not a.no_head_elu,
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
         "norm_then_activation": not a.elu_before_bn,
+        "bn_eps": a.bn_eps, "bn_momentum": a.bn_momentum,
+        "validation_fraction": validation_fraction,
         "seed": a.seed, "epochs": a.epochs, "device": str(device),
         "deterministic": a.deterministic,
         "test_evaluation": a.test_evaluation,
         "final_test_acc": final_test_acc,
+        "final_val_acc": final_val_acc, "final_val_loss": final_val_loss,
+        "checkpoint_selection": "final_epoch" if a.strict or val is None else "best_internal_val_accuracy",
         "best_val_acc": None if val is None else best[0],
         "best_epoch": None if val is None else best[2],
         "seconds": elapsed, "test_evaluations": test_evaluations,
@@ -254,7 +309,9 @@ def main():
     np.savez(out.with_suffix(".npz"),
              y_true=yte if final_pred.size else np.array([], dtype=np.int64),
              y_pred=final_pred, fit_indices=fit,
-             validation_indices=np.array([], dtype=np.int64) if val is None else val)
+             validation_indices=np.array([], dtype=np.int64) if val is None else val,
+             validation_y_true=np.array([], dtype=np.int64) if val is None else ytr[val],
+             validation_y_pred=val_pred)
     out.write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k != "history"}, indent=2))
 

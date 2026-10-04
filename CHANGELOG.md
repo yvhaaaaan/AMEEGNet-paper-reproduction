@@ -121,6 +121,15 @@
 
 - Added batch-run forwarding for the no-fusion/no-ECA ablation.
 
+## v1.0.26 - 2026-10-05
+
+- Added configurable BatchNorm epsilon and momentum for controlled
+  implementation diagnostics; defaults preserve the existing PyTorch values.
+- Added finite gradient-norm logging, periodic checkpoints, validation
+  predictions, and source/data provenance to single-subject runs.
+- Kept test evaluation final-only by default and did not change the model
+  architecture or training protocol.
+
 ## v1.0.6 - 2026-10-04
 
 - Fixed ablation-only channel construction when fusion is disabled.

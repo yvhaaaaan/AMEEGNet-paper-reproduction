@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.25 - 2026-10-04
+
+- Archived the paired T-to-E/E-to-T Session audit: 72.53% +/- 8.62%, which is
+  8.64 percentage points below the paper mean.
+- Confirmed that Session direction alone does not explain the reproduction gap.
+
 # v1.0.24 - 2026-10-04
 
 - Added a bidirectional Session audit and archived the E-to-T batch. The

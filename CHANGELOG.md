@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.8 - 2026-10-04
+
+- Corrected the batch audit release metadata and included fusion/ECA settings
+  in the configuration audit.
+- Archived the nine-subject no-fusion/no-ECA ablation audit.
+
 ## v1.0.7 - 2026-10-04
 
 - Added batch-run forwarding for the no-fusion/no-ECA ablation.

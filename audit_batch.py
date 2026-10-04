@@ -28,7 +28,7 @@ def main():
             accuracy = float(np.mean(truth == predicted))
         assert accuracy == record['final_test_acc'] == history[-1]['test_acc']
         configs.append({k: record[k] for k in (
-            'strict', 'paper_pooling', 'bn_first', 'norm_then_activation',
+            'strict', 'paper_pooling', 'fusion', 'eca', 'bn_first', 'norm_then_activation',
             'seed', 'epochs', 'device', 'training_protocol')})
         rows.append((sid, accuracy * 100, record['seconds']))
         for suffix in ('.json', '.npz', '.pt'):
@@ -41,7 +41,7 @@ def main():
     assert np.isclose(values.mean()/100, summary['mean_final_acc'])
     assert np.isclose(values.std(ddof=1)/100, summary['std_final_acc'])
     lines = ['# Nine-subject pooled variant audit', '',
-             'Training code: v1.0.3 (bb3d254). Audit release: v1.0.4.', '',
+             'Training code: v1.0.7 (0ce0b90). Audit release: v1.0.8.', '',
              'All nine saved prediction files reproduce their final-epoch accuracies.',
              'Configuration matches across subjects; 1000 finite training-loss records each.',
              'Checkpoint presence and hashes verified; checkpoint inference not rerun.', '',

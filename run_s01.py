@@ -1,12 +1,79 @@
-import argparse, json, random, time
+import argparse
+import hashlib
+import json
+import os
+import platform
+import random
+import subprocess
+import time
 from pathlib import Path
+
+# CUDA requires this to be set before CUDA work starts for deterministic GEMMs.
+os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+
 from ameegnet_ours import AMEEGNet, load_subject_npz, session_standardize
+
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def git_metadata():
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        dirty = bool(subprocess.check_output(
+            ["git", "status", "--porcelain"], text=True,
+            stderr=subprocess.DEVNULL
+        ).strip())
+    except (OSError, subprocess.CalledProcessError):
+        commit, dirty = None, None
+    return commit, dirty
+
+
+def configure_reproducibility(seed, deterministic):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    if deterministic:
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+
+
+def state_fingerprint(model):
+    digest = hashlib.sha256()
+    for name, tensor in model.state_dict().items():
+        digest.update(name.encode("utf-8"))
+        digest.update(tensor.detach().cpu().contiguous().numpy().tobytes())
+    return digest.hexdigest()
+
+
+def evaluate(model, x, y, device, loss_fn):
+    model.eval()
+    with torch.no_grad():
+        xt = torch.from_numpy(x).to(device)
+        yt = torch.from_numpy(y).to(device)
+        logits = model(xt)
+        loss = float(loss_fn(logits, yt).item())
+        pred = logits.argmax(1).cpu().numpy()
+    return loss, float(accuracy_score(y, pred)), pred
 
 
 def main():
@@ -16,99 +83,181 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
     p.add_argument("--strict", action="store_true")
-    p.add_argument("--no-bn-first", action="store_true",
-                   help="remove the BatchNorm immediately after temporal convolutions")
-    p.add_argument("--elu-before-bn", action="store_true",
-                   help="use ELU before BN in depthwise and separable blocks")
-    p.add_argument("--paper-pooling", action="store_true",
-                   help="retain standard EEGNet average pooling and dropout")
-    p.add_argument("--dropout", type=float, default=None,
-                   help="override branch/classifier dropout probability")
-    p.add_argument("--dropout-after-pool", action="store_true",
-                   help="apply branch dropout after each EEGNet pooling layer")
-    p.add_argument("--max-norm", action="store_true",
-                   help="apply standard EEGNet spatial=1 and classifier=0.25 constraints")
-    p.add_argument("--no-head-elu", action="store_true",
-                   help="remove the inferred ELU after Dense(32)")
-    p.add_argument("--reverse-sessions", action="store_true",
-                   help="train on the E session and evaluate on T")
-    p.add_argument("--no-fusion", action="store_true",
-                   help="disable the two paper-described fusion transmissions")
-    p.add_argument("--no-eca", action="store_true",
-                   help="disable ECA before the classification block")
+    p.add_argument("--deterministic", action="store_true",
+                   help="enable deterministic PyTorch/CUDA algorithms")
+    p.add_argument("--validation-fraction", type=float, default=None,
+                   help="split this fraction from the training session for diagnosis")
+    p.add_argument("--test-evaluation", choices=("final", "none", "each-epoch"),
+                   default="final",
+                   help="when to evaluate the held-out target session")
+    p.add_argument("--no-bn-first", action="store_true")
+    p.add_argument("--elu-before-bn", action="store_true")
+    p.add_argument("--paper-pooling", action="store_true")
+    p.add_argument("--dropout", type=float, default=None)
+    p.add_argument("--dropout-after-pool", action="store_true")
+    p.add_argument("--max-norm", action="store_true")
+    p.add_argument("--no-head-elu", action="store_true")
+    p.add_argument("--reverse-sessions", action="store_true")
+    p.add_argument("--no-fusion", action="store_true")
+    p.add_argument("--no-eca", action="store_true")
     p.add_argument("--out", default="results/s01.json")
     a = p.parse_args()
     out = Path(a.out)
     artifacts = [out, out.with_suffix('.pt'), out.with_suffix('.npz')]
     if any(path.exists() for path in artifacts):
-        raise FileExistsError(f'Refusing to overwrite experiment artifacts: {out}')
-    random.seed(a.seed); np.random.seed(a.seed); torch.manual_seed(a.seed)
-    if torch.cuda.is_available(): torch.cuda.manual_seed_all(a.seed)
-    device = torch.device(a.device if a.device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+        raise FileExistsError(f"Refusing to overwrite experiment artifacts: {out}")
+
+    configure_reproducibility(a.seed, a.deterministic)
+    device = torch.device(a.device if a.device != "auto" else
+                          ("cuda" if torch.cuda.is_available() else "cpu"))
     xtr, ytr, xte, yte = load_subject_npz(a.data)
     if a.reverse_sessions:
         xtr, ytr, xte, yte = xte, yte, xtr, ytr
     if not a.strict:
         xtr, xte = session_standardize(xtr, xte)
-    if a.strict:
+
+    validation_fraction = a.validation_fraction
+    if validation_fraction is None and not a.strict:
+        validation_fraction = 0.15
+    if validation_fraction is not None and not 0 < validation_fraction < 1:
+        raise ValueError("validation fraction must be between 0 and 1")
+    if validation_fraction is None:
         fit, val = np.arange(len(ytr)), None
     else:
-        fit, val = train_test_split(np.arange(len(ytr)), test_size=0.15,
-                                    stratify=ytr, random_state=a.seed)
+        fit, val = train_test_split(
+            np.arange(len(ytr)), test_size=validation_fraction,
+            stratify=ytr, random_state=a.seed
+        )
+        fit, val = np.asarray(fit), np.asarray(val)
+
     use_pool = a.paper_pooling or not a.strict
-    dropout = a.dropout if a.dropout is not None else (0.25 if (a.paper_pooling or not a.strict) else 0.0)
-    model = AMEEGNet(pool=use_pool, dropout=dropout,
-                     bn_first=not a.no_bn_first,
-                     norm_then_activation=not a.elu_before_bn,
-                     fusion=not a.no_fusion, eca=not a.no_eca,
-                     dropout_after_pool=a.dropout_after_pool,
-                     head_elu=not a.no_head_elu).to(device)
+    dropout = a.dropout if a.dropout is not None else (
+        0.25 if (a.paper_pooling or not a.strict) else 0.0
+    )
+    model = AMEEGNet(
+        pool=use_pool, dropout=dropout,
+        bn_first=not a.no_bn_first,
+        norm_then_activation=not a.elu_before_bn,
+        fusion=not a.no_fusion, eca=not a.no_eca,
+        dropout_after_pool=a.dropout_after_pool,
+        head_elu=not a.no_head_elu,
+    ).to(device)
+    initial_fingerprint = state_fingerprint(model)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
-           if a.strict else torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4))
+           if a.strict else torch.optim.AdamW(model.parameters(), lr=1e-3,
+                                              weight_decay=1e-4))
     loss_fn = nn.CrossEntropyLoss(label_smoothing=0.1 if not a.strict else 0.0)
     gen = torch.Generator().manual_seed(a.seed)
-    loader = DataLoader(TensorDataset(torch.from_numpy(xtr[fit]), torch.from_numpy(ytr[fit])),
-                        batch_size=64, shuffle=True, generator=gen)
-    best = (-1.0, None, 0); history=[]; t0=time.perf_counter()
+    loader = DataLoader(
+        TensorDataset(torch.from_numpy(xtr[fit]), torch.from_numpy(ytr[fit])),
+        batch_size=64, shuffle=True, generator=gen
+    )
+
+    best = (-1.0, None, 0)
+    history = []
+    test_evaluations = 0
+    t0 = time.perf_counter()
     for ep in range(1, a.epochs + 1):
-        model.train(); total=0.0; preds=[]; ys=[]
+        model.train()
+        total = 0.0
+        preds, ys = [], []
         for xb, yb in loader:
-            xb, yb = xb.to(device), yb.to(device); opt.zero_grad(set_to_none=True)
-            z=model(xb); l=loss_fn(z,yb)
-            if not torch.isfinite(l):
-                raise FloatingPointError(f'Non-finite loss at epoch {ep}')
-            l.backward()
+            xb, yb = xb.to(device), yb.to(device)
+            opt.zero_grad(set_to_none=True)
+            logits = model(xb)
+            loss = loss_fn(logits, yb)
+            if not torch.isfinite(loss):
+                raise FloatingPointError(f"Non-finite loss at epoch {ep}")
+            loss.backward()
             if not a.strict:
-                torch.nn.utils.clip_grad_norm_(model.parameters(),5.0)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
             if a.max_norm:
                 model.project_eegnet_max_norm()
-            total += l.item()*len(yb); preds.extend(z.argmax(1).detach().cpu().numpy()); ys.extend(yb.cpu().numpy())
-        model.eval()
-        with torch.no_grad():
-            zt=model(torch.from_numpy(xte).to(device))
-        te=float(accuracy_score(yte,zt.argmax(1).cpu().numpy()))
-        va=None
-        if val is not None:
-            with torch.no_grad():
-                zv=model(torch.from_numpy(xtr[val]).to(device))
-            va=float(accuracy_score(ytr[val],zv.argmax(1).cpu().numpy()))
-        history.append({"epoch":ep,"train_loss":total/len(fit),"train_acc":float(accuracy_score(ys,preds)),"val_acc":va,"test_acc":te})
-        if va is not None and va > best[0]:
-            best=(va,{k:v.detach().cpu().clone() for k,v in model.state_dict().items()},ep)
-    if best[1] is not None:
-        model.load_state_dict(best[1])
-    model.eval()
-    with torch.no_grad(): pred=model(torch.from_numpy(xte).to(device)).argmax(1).cpu().numpy()
-    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"dropout_after_pool":a.dropout_after_pool,"max_norm":a.max_norm,"head_elu":not a.no_head_elu,"reverse_sessions":a.reverse_sessions,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
-    result['training_protocol'] = {'optimizer':type(opt).__name__, 'lr':1e-3,
-        'weight_decay':opt.defaults['weight_decay'], 'betas':opt.defaults['betas'],
-        'eps':opt.defaults['eps'], 'gradient_clip_max_norm':None if a.strict else 5.0,
-        'batch_size':64, 'train_samples':len(fit), 'test_samples':len(yte)}
-    out.parent.mkdir(parents=True,exist_ok=True)
-    torch.save({'model':model.state_dict(), 'optimizer':opt.state_dict(), 'args':vars(a)}, out.with_suffix('.pt'))
-    np.savez(out.with_suffix('.npz'), y_true=yte, y_pred=pred)
-    out=Path(a.out); out.parent.mkdir(parents=True,exist_ok=True); out.write_text(json.dumps(result,indent=2),encoding="utf-8")
-    print(json.dumps({k:v for k,v in result.items() if k != "history"},indent=2))
+            total += loss.item() * len(yb)
+            preds.extend(logits.argmax(1).detach().cpu().numpy())
+            ys.extend(yb.cpu().numpy())
 
-if __name__ == "__main__": main()
+        train_loss = total / len(fit)
+        train_acc = float(accuracy_score(ys, preds))
+        val_loss = val_acc = None
+        if val is not None:
+            val_loss, val_acc, _ = evaluate(model, xtr[val], ytr[val], device, loss_fn)
+            if val_acc > best[0]:
+                best = (val_acc,
+                        {k: v.detach().cpu().clone() for k, v in model.state_dict().items()},
+                        ep)
+        test_acc = None
+        if a.test_evaluation == "each-epoch":
+            _, test_acc, _ = evaluate(model, xte, yte, device, loss_fn)
+            test_evaluations += 1
+        history.append({"epoch": ep, "train_loss": train_loss,
+                        "train_acc": train_acc, "val_loss": val_loss,
+                        "val_acc": val_acc, "test_acc": test_acc})
+
+    if best[1] is not None and not a.strict:
+        model.load_state_dict(best[1])
+    final_test_acc = None
+    final_pred = np.array([], dtype=np.int64)
+    if a.test_evaluation != "none":
+        _, final_test_acc, final_pred = evaluate(model, xte, yte, device, loss_fn)
+        test_evaluations += 1
+    elapsed = time.perf_counter() - t0
+    commit, dirty = git_metadata()
+    version_path = Path(__file__).with_name("VERSION")
+    result = {
+        "version": version_path.read_text(encoding="utf-8").strip()
+        if version_path.exists() else None,
+        "git_commit": commit, "git_dirty": dirty,
+        "data_path": str(Path(a.data).resolve()),
+        "data_sha256": file_sha256(a.data),
+        "strict": a.strict, "paper_pooling": a.paper_pooling,
+        "dropout": dropout, "dropout_after_pool": a.dropout_after_pool,
+        "max_norm": a.max_norm, "head_elu": not a.no_head_elu,
+        "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
+        "eca": not a.no_eca, "bn_first": not a.no_bn_first,
+        "norm_then_activation": not a.elu_before_bn,
+        "seed": a.seed, "epochs": a.epochs, "device": str(device),
+        "deterministic": a.deterministic,
+        "test_evaluation": a.test_evaluation,
+        "final_test_acc": final_test_acc,
+        "best_val_acc": None if val is None else best[0],
+        "best_epoch": None if val is None else best[2],
+        "seconds": elapsed, "test_evaluations": test_evaluations,
+        "initial_state_sha256": initial_fingerprint,
+        "final_state_sha256": state_fingerprint(model),
+        "history": history,
+        "runtime": {
+            "python": platform.python_version(), "torch": torch.__version__,
+            "cuda_runtime": torch.version.cuda,
+            "cudnn": torch.backends.cudnn.version(),
+            "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+            "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
+            "cudnn_deterministic": torch.backends.cudnn.deterministic,
+            "cudnn_benchmark": torch.backends.cudnn.benchmark,
+            "matmul_tf32": torch.backends.cuda.matmul.allow_tf32,
+            "cudnn_tf32": torch.backends.cudnn.allow_tf32,
+        },
+    }
+    result["training_protocol"] = {
+        "optimizer": type(opt).__name__, "lr": 1e-3,
+        "weight_decay": opt.defaults["weight_decay"], "betas": opt.defaults["betas"],
+        "eps": opt.defaults["eps"],
+        "gradient_clip_max_norm": None if a.strict else 5.0,
+        "batch_size": 64, "fit_samples": len(fit),
+        "validation_samples": None if val is None else len(val),
+        "test_samples": len(yte), "label_smoothing": 0.0 if a.strict else 0.1,
+    }
+    out.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),
+                "args": vars(a), "result": result}, out.with_suffix(".pt"))
+    np.savez(out.with_suffix(".npz"),
+             y_true=yte if final_pred.size else np.array([], dtype=np.int64),
+             y_pred=final_pred, fit_indices=fit,
+             validation_indices=np.array([], dtype=np.int64) if val is None else val)
+    out.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(json.dumps({k: v for k, v in result.items() if k != "history"}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,5 +1,18 @@
 # Changelog
 
+# v1.0.15 - 2026-10-04
+
+- Added an independent raw-MAT audit for all nine BCI IV 2a subjects. The
+  official trial windows, labels, order, and cached NPZ arrays match bitwise.
+- Added data finite-value/session/label validation and recorded source SHA-256.
+- Made model head-shape inference analytical so construction does not update
+  BatchNorm statistics or consume Dropout RNG state with a dummy batch.
+- Added deterministic CUDA mode, code/data/runtime provenance, state
+  fingerprints, train/validation indices, and explicit final-only test
+  evaluation to the training runner.
+- Corrected the audit boundary: previous runs that inspected target-session
+  curves remain exploratory and are not treated as confirmatory results.
+
 ## v1.0.14 - 2026-10-04
 
 - Audited pooled/post-pooling-dropout reproduction batches for seed 42 and

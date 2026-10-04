@@ -96,9 +96,16 @@ class AMEEGNet(nn.Module):
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool)
         self.attn = nn.ModuleList([ECA(8), ECA(16), ECA(32)])
-        with torch.no_grad():
-            dummy = torch.zeros(2, 1, channels, samples)
-            n = torch.cat(self._features(dummy), dim=1).flatten(1).shape[1]
+        # All branches preserve time in their convolutions.  Pooling therefore
+        # changes 1125 to floor((floor((1125-4)/4+1)-8)/8+1)=35.
+        # Infer the head width analytically so construction does not update BN
+        # running statistics or consume Dropout RNG state with a dummy batch.
+        if pool:
+            pooled = (samples - 4) // 4 + 1
+            pooled = (pooled - 8) // 8 + 1
+        else:
+            pooled = samples
+        n = (8 + 16 + 32) * pooled
         head = [nn.Linear(n, 32)]
         if head_elu:
             head.append(nn.ELU())

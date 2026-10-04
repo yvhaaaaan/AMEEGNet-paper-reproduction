@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.19 - 2026-10-04
+
+- Archived the deterministic v1.0.17 nine-subject standard pooling/dropout
+  audit: 68.29% +/- 8.55%, 12.88 percentage points below the paper mean.
+- Defined the next controlled candidate as standard EEGNet max-norm projection
+  on top of the same pooling/dropout path.
+
 # v1.0.18 - 2026-10-04
 
 - Updated the batch auditor for final-only target-session evaluation and

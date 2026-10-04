@@ -80,12 +80,16 @@ class AMEEGNet(nn.Module):
                  pool=True, dropout=0.25, fusion=True, eca=True,
                  bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, head_elu=True,
-                 bn_eps=1e-5, bn_momentum=0.1):
+                 head_dropout=None, bn_eps=1e-5, bn_momentum=0.1):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")
         if not math.isfinite(bn_momentum) or not 0 < bn_momentum <= 1:
             raise ValueError("bn_momentum must be finite and in (0,1]")
+        if head_dropout is None:
+            head_dropout = dropout
+        if not math.isfinite(head_dropout) or not 0 <= head_dropout < 1:
+            raise ValueError("head_dropout must be finite and in [0,1)")
         self.fusion = fusion
         self.use_eca = eca
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
@@ -119,7 +123,7 @@ class AMEEGNet(nn.Module):
         head = [nn.Linear(n, 32)]
         if head_elu:
             head.append(nn.ELU())
-        head.extend([nn.Dropout(dropout), nn.Linear(32, classes)])
+        head.extend([nn.Dropout(head_dropout), nn.Linear(32, classes)])
         self.head = nn.Sequential(*head)
 
     def _features(self, x):

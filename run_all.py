@@ -14,6 +14,7 @@ def main():
     p.add_argument("--paper-pooling", action="store_true")
     p.add_argument("--dropout", type=float, default=None)
     p.add_argument("--dropout-after-pool", action="store_true")
+    p.add_argument("--no-head-dropout", action="store_true")
     p.add_argument("--max-norm", action="store_true")
     p.add_argument("--no-bn-first", action="store_true")
     p.add_argument("--elu-before-bn", action="store_true")
@@ -21,6 +22,10 @@ def main():
     p.add_argument("--reverse-sessions", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
+    p.add_argument("--bn-eps", type=float, default=1e-5)
+    p.add_argument("--bn-momentum", type=float, default=0.1)
+    p.add_argument("--log-every", type=int, default=100)
+    p.add_argument("--checkpoint-every", type=int, default=0)
     p.add_argument("--out", default="results/all_500")
     a = p.parse_args()
     out = Path(a.out)
@@ -45,6 +50,8 @@ def main():
             cmd.extend(["--dropout", str(a.dropout)])
         if a.dropout_after_pool:
             cmd.append("--dropout-after-pool")
+        if a.no_head_dropout:
+            cmd.append("--no-head-dropout")
         if a.max_norm:
             cmd.append("--max-norm")
         if a.no_bn_first:
@@ -59,6 +66,9 @@ def main():
             cmd.append("--no-fusion")
         if a.no_eca:
             cmd.append("--no-eca")
+        cmd.extend(["--bn-eps", str(a.bn_eps), "--bn-momentum", str(a.bn_momentum),
+                    "--log-every", str(a.log_every),
+                    "--checkpoint-every", str(a.checkpoint_every)])
         print("running", sid, flush=True)
         subprocess.run(cmd, check=True)
         result = json.loads(path.read_text(encoding="utf-8"))

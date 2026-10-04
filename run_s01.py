@@ -112,6 +112,7 @@ def main():
     p.add_argument("--paper-pooling", action="store_true")
     p.add_argument("--dropout", type=float, default=None)
     p.add_argument("--dropout-after-pool", action="store_true")
+    p.add_argument("--no-head-dropout", action="store_true")
     p.add_argument("--max-norm", action="store_true")
     p.add_argument("--no-head-elu", action="store_true")
     p.add_argument("--reverse-sessions", action="store_true")
@@ -164,6 +165,7 @@ def main():
     dropout = a.dropout if a.dropout is not None else (
         0.25 if (a.paper_pooling or not a.strict) else 0.0
     )
+    head_dropout = 0.0 if a.no_head_dropout else dropout
     model = AMEEGNet(
         pool=use_pool, dropout=dropout,
         bn_first=not a.no_bn_first,
@@ -171,6 +173,7 @@ def main():
         fusion=not a.no_fusion, eca=not a.no_eca,
         dropout_after_pool=a.dropout_after_pool,
         head_elu=not a.no_head_elu,
+        head_dropout=head_dropout,
         bn_eps=a.bn_eps, bn_momentum=a.bn_momentum,
     ).to(device)
     initial_fingerprint = state_fingerprint(model)
@@ -264,6 +267,7 @@ def main():
         "data_sha256": data_digest, "source_sha256": source_hashes,
         "strict": a.strict, "paper_pooling": a.paper_pooling,
         "dropout": dropout, "dropout_after_pool": a.dropout_after_pool,
+        "head_dropout": head_dropout,
         "max_norm": a.max_norm, "head_elu": not a.no_head_elu,
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,

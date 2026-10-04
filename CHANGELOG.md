@@ -1,5 +1,15 @@
 # Changelog
 
+# v1.0.27 - 2026-10-05
+
+- Archived the A01 BN epsilon/momentum diagnostic: changing BatchNorm
+  statistics changed the validation trajectory but did not establish the
+  reproduction gap's cause; no target-session test was evaluated.
+- Made classifier-head dropout independent from branch dropout so the paper's
+  explicitly stated `Flatten -> Dense(32) -> Dense(classes)` path can be
+  audited without adding an undocumented head dropout.
+- Forwarded BN and checkpoint controls through the nine-subject runner.
+
 # v1.0.25 - 2026-10-04
 
 - Archived the paired T-to-E/E-to-T Session audit: 72.53% +/- 8.62%, which is

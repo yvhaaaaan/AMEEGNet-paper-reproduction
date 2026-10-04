@@ -30,6 +30,8 @@ def main():
                    help="apply standard EEGNet spatial=1 and classifier=0.25 constraints")
     p.add_argument("--no-head-elu", action="store_true",
                    help="remove the inferred ELU after Dense(32)")
+    p.add_argument("--reverse-sessions", action="store_true",
+                   help="train on the E session and evaluate on T")
     p.add_argument("--no-fusion", action="store_true",
                    help="disable the two paper-described fusion transmissions")
     p.add_argument("--no-eca", action="store_true",
@@ -44,6 +46,8 @@ def main():
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(a.seed)
     device = torch.device(a.device if a.device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
     xtr, ytr, xte, yte = load_subject_npz(a.data)
+    if a.reverse_sessions:
+        xtr, ytr, xte, yte = xte, yte, xtr, ytr
     if not a.strict:
         xtr, xte = session_standardize(xtr, xte)
     if a.strict:
@@ -96,7 +100,7 @@ def main():
         model.load_state_dict(best[1])
     model.eval()
     with torch.no_grad(): pred=model(torch.from_numpy(xte).to(device)).argmax(1).cpu().numpy()
-    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"dropout_after_pool":a.dropout_after_pool,"max_norm":a.max_norm,"head_elu":not a.no_head_elu,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
+    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"dropout_after_pool":a.dropout_after_pool,"max_norm":a.max_norm,"head_elu":not a.no_head_elu,"reverse_sessions":a.reverse_sessions,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
     result['training_protocol'] = {'optimizer':type(opt).__name__, 'lr':1e-3,
         'weight_decay':opt.defaults['weight_decay'], 'betas':opt.defaults['betas'],
         'eps':opt.defaults['eps'], 'gradient_clip_max_norm':None if a.strict else 5.0,

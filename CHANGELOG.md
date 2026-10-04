@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.13 - 2026-10-04
+
+- Added an explicit T/E versus E/T session-direction comparison.
+
 ## v1.0.12 - 2026-10-04
 
 - Added an explicit comparison switch for the inferred Dense(32) ELU.

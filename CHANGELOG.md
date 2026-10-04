@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.16 - 2026-10-04
+
+- Archived the clean deterministic A01 strict run at v1.0.15: 50.35% final
+  target-session accuracy after 1000 epochs, with one final test evaluation.
+- Defined the next controlled audit as the standard EEGNet pooling/dropout
+  implementation hypothesis; it remains separate from the v1.7 method.
+
 # v1.0.15 - 2026-10-04
 
 - Added an independent raw-MAT audit for all nine BCI IV 2a subjects. The

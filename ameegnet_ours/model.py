@@ -22,7 +22,8 @@ class ECA(nn.Module):
 
 class Branch(nn.Module):
     def __init__(self, channels, f1, kernel, depth_in=None, sep_in=None,
-                 pool=True, dropout=0.25, bn_first=True, norm_then_activation=True):
+                 pool=True, dropout=0.25, bn_first=True, norm_then_activation=True,
+                 dropout_after_pool=False):
         super().__init__()
         depth_in = depth_in or f1
         sep_in = sep_in or depth_in * 2
@@ -35,6 +36,7 @@ class Branch(nn.Module):
         self.sep_pw = nn.Conv2d(sep_in, f1 * 2, 1, bias=False)
         self.bn_s = nn.BatchNorm2d(f1 * 2)
         self.norm_then_activation = norm_then_activation
+        self.dropout_after_pool = dropout_after_pool
         self.pool1 = nn.AvgPool2d((1, 4)) if pool else nn.Identity()
         self.pool2 = nn.AvgPool2d((1, 8)) if pool else nn.Identity()
         self.drop = nn.Dropout(dropout) if dropout else nn.Identity()
@@ -47,16 +49,25 @@ class Branch(nn.Module):
             h = torch.cat((temporal_fusion, h), dim=1)
         h = self.depth(h)
         h = self.bn_d(h) if self.norm_then_activation else self.bn_d(F.elu(h))
-        h = self.drop(F.elu(h) if self.norm_then_activation else h)
+        h = F.elu(h) if self.norm_then_activation else h
+        if not self.dropout_after_pool:
+            h = self.drop(h)
         depth_out = h
         if depth_fusion is not None:
             h = torch.cat((depth_fusion, h), dim=1)
         h = self.pool1(h)
+        if self.dropout_after_pool:
+            h = self.drop(h)
         h = same_time(h, 16)
         h = self.sep_pw(self.sep_dw(h))
         h = self.bn_s(h) if self.norm_then_activation else self.bn_s(F.elu(h))
-        h = self.drop(F.elu(h) if self.norm_then_activation else h)
-        return self.pool2(h), depth_out
+        h = F.elu(h) if self.norm_then_activation else h
+        if not self.dropout_after_pool:
+            h = self.drop(h)
+        h = self.pool2(h)
+        if self.dropout_after_pool:
+            h = self.drop(h)
+        return h, depth_out
 
     def forward(self, x, temporal_fusion=None, depth_fusion=None):
         return self.from_temporal(self.temporal_out(x), temporal_fusion, depth_fusion)
@@ -65,21 +76,25 @@ class Branch(nn.Module):
 class AMEEGNet(nn.Module):
     def __init__(self, channels=22, samples=1125, classes=4,
                  pool=True, dropout=0.25, fusion=True, eca=True,
-                 bn_first=True, norm_then_activation=True):
+                 bn_first=True, norm_then_activation=True,
+                 dropout_after_pool=False):
         super().__init__()
         self.fusion = fusion
         self.use_eca = eca
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
-                         bn_first=bn_first, norm_then_activation=norm_then_activation)
+                         bn_first=bn_first, norm_then_activation=norm_then_activation,
+                         dropout_after_pool=dropout_after_pool)
         b2_depth_in = 12 if fusion else 8
         b2_sep_in = 24 if fusion else 16
         b3_sep_in = 56 if fusion else 32
         self.b2 = Branch(channels, 8, 32, depth_in=b2_depth_in, sep_in=b2_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
-                         norm_then_activation=norm_then_activation)
+                         norm_then_activation=norm_then_activation,
+                         dropout_after_pool=dropout_after_pool)
         self.b3 = Branch(channels, 16, 64, depth_in=16, sep_in=b3_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
-                         norm_then_activation=norm_then_activation)
+                         norm_then_activation=norm_then_activation,
+                         dropout_after_pool=dropout_after_pool)
         self.attn = nn.ModuleList([ECA(8), ECA(16), ECA(32)])
         with torch.no_grad():
             dummy = torch.zeros(2, 1, channels, samples)

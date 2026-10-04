@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.10 - 2026-10-04
+
+- Added controlled standard EEGNet dropout placement after pooling.
+- Restored explicit ELU application in both normalization-order paths after
+  the dropout refactor.
+
 ## v1.0.9 - 2026-10-04
 
 - Added explicit dropout override support for controlled EEGNet protocol

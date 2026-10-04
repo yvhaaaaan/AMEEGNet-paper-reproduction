@@ -10,6 +10,7 @@ def main():
     p.add_argument("--paper-pooling", action="store_true")
     p.add_argument("--dropout", type=float, default=None)
     p.add_argument("--dropout-after-pool", action="store_true")
+    p.add_argument("--max-norm", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--out", default="results/all_500")
@@ -31,6 +32,8 @@ def main():
             cmd.extend(["--dropout", str(a.dropout)])
         if a.dropout_after_pool:
             cmd.append("--dropout-after-pool")
+        if a.max_norm:
+            cmd.append("--max-norm")
         if a.no_fusion:
             cmd.append("--no-fusion")
         if a.no_eca:

@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.11 - 2026-10-04
+
+- Added optional standard EEGNet max-norm projection for spatial depthwise
+  kernels (`1.0`) and the final classifier (`0.25`).
+
 ## v1.0.10 - 2026-10-04
 
 - Added controlled standard EEGNet dropout placement after pooling.

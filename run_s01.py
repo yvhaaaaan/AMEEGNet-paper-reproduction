@@ -26,6 +26,8 @@ def main():
                    help="override branch/classifier dropout probability")
     p.add_argument("--dropout-after-pool", action="store_true",
                    help="apply branch dropout after each EEGNet pooling layer")
+    p.add_argument("--max-norm", action="store_true",
+                   help="apply standard EEGNet spatial=1 and classifier=0.25 constraints")
     p.add_argument("--no-fusion", action="store_true",
                    help="disable the two paper-described fusion transmissions")
     p.add_argument("--no-eca", action="store_true",
@@ -72,6 +74,8 @@ def main():
             if not a.strict:
                 torch.nn.utils.clip_grad_norm_(model.parameters(),5.0)
             opt.step()
+            if a.max_norm:
+                model.project_eegnet_max_norm()
             total += l.item()*len(yb); preds.extend(z.argmax(1).detach().cpu().numpy()); ys.extend(yb.cpu().numpy())
         model.eval()
         with torch.no_grad():
@@ -89,7 +93,7 @@ def main():
         model.load_state_dict(best[1])
     model.eval()
     with torch.no_grad(): pred=model(torch.from_numpy(xte).to(device)).argmax(1).cpu().numpy()
-    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"dropout_after_pool":a.dropout_after_pool,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
+    result={"strict":a.strict,"paper_pooling":a.paper_pooling,"dropout":dropout,"dropout_after_pool":a.dropout_after_pool,"max_norm":a.max_norm,"fusion":not a.no_fusion,"eca":not a.no_eca,"bn_first":not a.no_bn_first,"norm_then_activation":not a.elu_before_bn,"seed":a.seed,"epochs":a.epochs,"device":str(device),"final_test_acc":float(accuracy_score(yte,pred)),"best_val_acc":None if a.strict else best[0],"best_epoch":None if a.strict else best[2],"seconds":time.perf_counter()-t0,"history":history}
     result['training_protocol'] = {'optimizer':type(opt).__name__, 'lr':1e-3,
         'weight_decay':opt.defaults['weight_decay'], 'betas':opt.defaults['betas'],
         'eps':opt.defaults['eps'], 'gradient_clip_max_norm':None if a.strict else 5.0,

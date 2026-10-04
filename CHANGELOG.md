@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.20 - 2026-10-04
+
+- Archived the deterministic v1.0.19 nine-subject max-norm batch: 71.60% +/-
+  9.06%, 9.57 percentage points below the paper mean.
+- Defined the next literal-architecture audit without the inferred Dense(32)
+  ELU, while retaining the controlled standard EEGNet pooling/dropout path.
+
 # v1.0.19 - 2026-10-04
 
 - Archived the deterministic v1.0.17 nine-subject standard pooling/dropout

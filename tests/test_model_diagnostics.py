@@ -7,9 +7,54 @@ from torch import nn
 
 from ameegnet_ours import AMEEGNet
 from run_s01 import normalize_trials
+from audit_source_bn import recalibrate
 
 
 class ModelDiagnosticsTests(unittest.TestCase):
+    def test_default_audit_switches_preserve_initialization(self):
+        torch.manual_seed(42)
+        implicit = AMEEGNet()
+        torch.manual_seed(42)
+        explicit = AMEEGNet(init_mode="default", eca_stage="output",
+                            fixed_fusion_channels=False)
+        for name, tensor in implicit.state_dict().items():
+            self.assertTrue(torch.equal(tensor, explicit.state_dict()[name]), name)
+
+    def test_architecture_audit_shapes_and_gradients(self):
+        torch.set_num_threads(1)
+        settings = ({"eca_stage": "depth_pre_sep"},
+                    {"fixed_fusion_channels": True},
+                    {"init_mode": "xavier_uniform"},
+                    {"init_mode": "xavier_normal"},
+                    {"init_mode": "kaiming_normal"})
+        for config in settings:
+            with self.subTest(config=config):
+                model = AMEEGNet(**config)
+                logits = model(torch.randn(2, 22, 1125))
+                self.assertEqual(tuple(logits.shape), (2, 4))
+                logits.square().mean().backward()
+                for parameter in model.parameters():
+                    self.assertIsNotNone(parameter.grad)
+                    self.assertTrue(torch.isfinite(parameter.grad).all().item())
+        for config in ({"init_mode": "unsupported"}, {"eca_stage": "unsupported"}):
+            with self.assertRaises(ValueError):
+                AMEEGNet(**config)
+
+    def test_source_bn_diagnostic_never_changes_weights(self):
+        torch.set_num_threads(1)
+        for mode in ("single_source_batch", "sequential_source_moments"):
+            with self.subTest(mode=mode):
+                model = AMEEGNet(bn_first=False)
+                before = {name: p.clone() for name, p in model.named_parameters()}
+                recalibrate(model, torch.randn(4, 22, 1125), mode)
+                self.assertFalse(model.training)
+                for name, parameter in model.named_parameters():
+                    self.assertTrue(torch.equal(parameter, before[name]), name)
+                for module in model.modules():
+                    if isinstance(module, nn.BatchNorm2d):
+                        self.assertTrue(torch.isfinite(module.running_mean).all())
+                        self.assertTrue((module.running_var > 0).all())
+
     def test_head_dropout_default_preserves_state(self):
         torch.manual_seed(42)
         implicit = AMEEGNet(pool=True, dropout=0.5)

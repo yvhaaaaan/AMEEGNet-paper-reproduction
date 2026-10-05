@@ -1,5 +1,17 @@
 # Changelog
 
+# v1.0.43 - 2026-10-05
+
+- Added a checkpoint-only BatchNorm diagnostic using fit indices from the
+  source Session. It never evaluates target inputs or labels and does not
+  save a modified trained model.
+- Expanded configuration equality checks in the batch auditor to cover the
+  initialization, ECA placement, fusion-width and full training protocol.
+- Fixed interpretation of the fixed-width audit: keeping 16 output filters
+  after a 12-channel concatenation requires a conventional spatial convolution,
+  not the depthwise multiplier described by the text. Matching figure labels
+  alone therefore does not establish the original architecture.
+
 # v1.0.42 - 2026-10-05
 
 - Added a graph-consistent fusion-channel audit. The optional mode keeps the

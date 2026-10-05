@@ -19,3 +19,5 @@ venv/
 *.tmp
 *.bak
 paper_figure5.webp
+results/ameegnet_official.pdf
+results/ameegnet_page-*.png

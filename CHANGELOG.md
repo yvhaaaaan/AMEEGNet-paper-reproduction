@@ -1,5 +1,13 @@
 # Changelog
 
+# v1.0.42 - 2026-10-05
+
+- Added a graph-consistent fusion-channel audit. The optional mode keeps the
+  fused second branch at `F2*D=16` channels and sends 16+32 channels into the
+  third separable convolution, matching the labels in Figure 2.
+- The previous concatenation-width implementation remains the default and is
+  not altered by this audit switch.
+
 # v1.0.41 - 2026-10-05
 
 - Added an isolated `depth_pre_sep` ECA placement audit for the paper's

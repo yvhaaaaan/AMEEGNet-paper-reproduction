@@ -135,6 +135,8 @@ def main():
     p.add_argument("--eca-bias", action="store_true")
     p.add_argument("--eca-stage", choices=("output", "depth_pre_sep"),
                    default="output")
+    p.add_argument("--fixed-fusion-channels", action="store_true",
+                   help="图示审计：融合后保持 F2*D 输出通道数")
     p.add_argument("--init-mode", choices=("default", "xavier_uniform",
                                              "xavier_normal", "kaiming_normal"),
                    default="default")
@@ -202,6 +204,7 @@ def main():
         head_dropout=head_dropout,
         bn_eps=a.bn_eps, bn_momentum=a.bn_momentum,
         eca_bias=a.eca_bias, init_mode=a.init_mode, eca_stage=a.eca_stage,
+        fixed_fusion_channels=a.fixed_fusion_channels,
     ).to(device)
     initial_fingerprint = state_fingerprint(model)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
@@ -303,6 +306,7 @@ def main():
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
         "eca_bias": a.eca_bias,
         "eca_stage": a.eca_stage,
+        "fixed_fusion_channels": a.fixed_fusion_channels,
         "init_mode": a.init_mode,
         "norm_then_activation": not a.elu_before_bn,
         "bn_eps": a.bn_eps, "bn_momentum": a.bn_momentum,

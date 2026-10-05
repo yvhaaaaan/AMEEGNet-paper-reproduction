@@ -25,15 +25,20 @@ class ECA(nn.Module):
 class Branch(nn.Module):
     def __init__(self, channels, f1, kernel, depth_in=None, sep_in=None,
                  pool=True, dropout=0.25, bn_first=True, norm_then_activation=True,
-                 dropout_after_pool=False, bn_eps=1e-5, bn_momentum=0.1):
+                 dropout_after_pool=False, bn_eps=1e-5, bn_momentum=0.1,
+                 depth_out=None, depth_groups=None):
         super().__init__()
         depth_in = depth_in or f1
         sep_in = sep_in or depth_in * 2
         self.temporal = nn.Conv2d(1, f1, (1, kernel), bias=False)
         self.bn_t = nn.BatchNorm2d(f1, eps=bn_eps, momentum=bn_momentum) if bn_first else nn.Identity()
-        self.depth = nn.Conv2d(depth_in, depth_in * 2, (channels, 1),
-                               groups=depth_in, bias=False)
-        self.bn_d = nn.BatchNorm2d(depth_in * 2, eps=bn_eps, momentum=bn_momentum)
+        depth_out = depth_in * 2 if depth_out is None else depth_out
+        depth_groups = depth_in if depth_groups is None else depth_groups
+        if depth_out % depth_groups != 0:
+            raise ValueError("depth_out must be divisible by depth_groups")
+        self.depth = nn.Conv2d(depth_in, depth_out, (channels, 1),
+                               groups=depth_groups, bias=False)
+        self.bn_d = nn.BatchNorm2d(depth_out, eps=bn_eps, momentum=bn_momentum)
         self.sep_dw = nn.Conv2d(sep_in, sep_in, (1, 16), groups=sep_in, bias=False)
         self.sep_pw = nn.Conv2d(sep_in, f1 * 2, 1, bias=False)
         self.bn_s = nn.BatchNorm2d(f1 * 2, eps=bn_eps, momentum=bn_momentum)
@@ -87,7 +92,8 @@ class AMEEGNet(nn.Module):
                  bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, head_elu=True,
                  bn_eps=1e-5, bn_momentum=0.1, head_dropout=None,
-                 eca_bias=False, init_mode="default", eca_stage="output"):
+                 eca_bias=False, init_mode="default", eca_stage="output",
+                 fixed_fusion_channels=False):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")
@@ -105,14 +111,24 @@ class AMEEGNet(nn.Module):
         self.fusion = fusion
         self.use_eca = eca
         self.eca_stage = eca_stage
+        self.fixed_fusion_channels = fixed_fusion_channels
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
                          bn_first=bn_first, norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
                          bn_eps=bn_eps, bn_momentum=bn_momentum)
         b2_depth_in = 12 if fusion else 8
-        b2_sep_in = 24 if fusion else 16
-        b3_sep_in = 56 if fusion else 32
+        if fusion and fixed_fusion_channels:
+            b2_depth_out = 16
+            b2_depth_groups = 1
+            b2_sep_in = 16
+            b3_sep_in = 48
+        else:
+            b2_depth_out = None
+            b2_depth_groups = None
+            b2_sep_in = 24 if fusion else 16
+            b3_sep_in = 56 if fusion else 32
         self.b2 = Branch(channels, 8, 32, depth_in=b2_depth_in, sep_in=b2_sep_in,
+                         depth_out=b2_depth_out, depth_groups=b2_depth_groups,
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,

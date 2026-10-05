@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.44 - 2026-10-05
+
+- Added an opt-in source-session validation checkpoint selection switch.
+- The default remains the paper-style final epoch; target-session labels are
+  still evaluated only once after training.
+
 # v1.0.43 - 2026-10-05
 
 - Added a checkpoint-only BatchNorm diagnostic using fit indices from the

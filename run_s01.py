@@ -112,6 +112,8 @@ def main():
                    help="enable deterministic PyTorch/CUDA algorithms")
     p.add_argument("--validation-fraction", type=float, default=None,
                    help="split this fraction from the training session for diagnosis")
+    p.add_argument("--select-best-validation", action="store_true",
+                   help="restore the best source-session validation checkpoint")
     p.add_argument("--test-evaluation", choices=("final", "none", "each-epoch"),
                    default="final",
                    help="when to evaluate the held-out target session")
@@ -180,6 +182,8 @@ def main():
         validation_fraction = 0.15
     if validation_fraction is not None and not 0 < validation_fraction < 1:
         raise ValueError("validation fraction must be between 0 and 1")
+    if a.select_best_validation and validation_fraction is None:
+        raise ValueError("--select-best-validation requires --validation-fraction")
     if validation_fraction is None:
         fit, val = np.arange(len(ytr)), None
     else:
@@ -276,7 +280,10 @@ def main():
                         "numpy_rng": np.random.get_state(), "python_rng": random.getstate(),
                         "fit_indices": fit, "validation_indices": val}, checkpoint)
 
-    if best[1] is not None and not a.strict:
+    select_best_validation = best[1] is not None and (
+        a.select_best_validation or not a.strict
+    )
+    if select_best_validation:
         model.load_state_dict(best[1])
     final_val_loss = final_val_acc = None
     val_pred = np.array([], dtype=np.int64)
@@ -311,12 +318,15 @@ def main():
         "norm_then_activation": not a.elu_before_bn,
         "bn_eps": a.bn_eps, "bn_momentum": a.bn_momentum,
         "validation_fraction": validation_fraction,
+        "select_best_validation": a.select_best_validation,
         "seed": a.seed, "epochs": a.epochs, "device": str(device),
         "deterministic": a.deterministic,
         "test_evaluation": a.test_evaluation,
         "final_test_acc": final_test_acc,
         "final_val_acc": final_val_acc, "final_val_loss": final_val_loss,
-        "checkpoint_selection": "final_epoch" if a.strict or val is None else "best_internal_val_accuracy",
+        "checkpoint_selection": (
+            "best_internal_val_accuracy" if select_best_validation else "final_epoch"
+        ),
         "best_val_acc": None if val is None else best[0],
         "best_epoch": None if val is None else best[2],
         "seconds": elapsed, "test_evaluations": test_evaluations,

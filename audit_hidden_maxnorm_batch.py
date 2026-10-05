@@ -37,7 +37,7 @@ def main():
             "dropout_after_pool", "head_dropout", "max_norm", "head_elu",
             "hidden_max_norm", "fusion", "eca", "bn_first", "eca_bias",
             "init_mode", "eca_stage", "fixed_fusion_channels", "reverse_sessions",
-            "training_protocol",
+            "select_best_validation", "training_protocol",
             "norm_then_activation", "bn_eps", "bn_momentum", "seed", "epochs",
             "device", "deterministic", "test_evaluation", "checkpoint_selection",
         )})

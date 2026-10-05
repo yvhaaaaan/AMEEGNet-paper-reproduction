@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.51 - 2026-10-06
+
+- Extended the batch auditor to compare the Softmax-loss, fusion activation,
+  and DataLoader RNG protocol fields across all subjects.
+
 # v1.0.50 - 2026-10-06
 
 - Added an opt-in ECA placement audit immediately after separable convolution

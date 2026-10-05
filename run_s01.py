@@ -94,6 +94,7 @@ def main():
     p.add_argument("--epochs", type=int, default=500)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
+    p.add_argument("--input-scale", type=float, default=1.0)
     p.add_argument("--strict", action="store_true")
     p.add_argument("--deterministic", action="store_true",
                    help="enable deterministic PyTorch/CUDA algorithms")
@@ -124,6 +125,8 @@ def main():
     out = Path(a.out)
     if a.epochs <= 0 or a.log_every < 0 or a.checkpoint_every < 0:
         raise ValueError("epochs must be positive and log/checkpoint intervals nonnegative")
+    if not math.isfinite(a.input_scale) or a.input_scale <= 0:
+        raise ValueError("input-scale must be finite and positive")
     if a.dropout is not None and (not math.isfinite(a.dropout) or not 0 <= a.dropout < 1):
         raise ValueError("dropout must be finite and in [0,1)")
     checkpoint_dir = out.parent / (out.stem + "_checkpoints")
@@ -143,6 +146,8 @@ def main():
     device = torch.device(a.device if a.device != "auto" else
                           ("cuda" if torch.cuda.is_available() else "cpu"))
     xtr, ytr, xte, yte = load_subject_npz(a.data)
+    xtr = (xtr * a.input_scale).astype(np.float32)
+    xte = (xte * a.input_scale).astype(np.float32)
     if a.reverse_sessions:
         xtr, ytr, xte, yte = xte, yte, xtr, ytr
     if not a.strict:
@@ -267,6 +272,7 @@ def main():
         "git_commit": commit, "git_dirty": dirty,
         "data_path": str(Path(a.data).resolve()),
         "data_sha256": data_digest, "source_sha256": source_hashes,
+        "input_scale": a.input_scale,
         "strict": a.strict, "paper_pooling": a.paper_pooling,
         "dropout": dropout, "dropout_after_pool": a.dropout_after_pool,
         "head_dropout": head_dropout,

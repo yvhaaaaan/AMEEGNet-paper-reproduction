@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.33 - 2026-10-05
+
+- Added an explicit positive input-scale parameter and provenance field to
+  audit whether the paper's data loader used microvolt or SI-unit EEG values.
+- Kept the default input scale at `1.0`; no existing result is altered.
+
 # v1.0.32 - 2026-10-05
 
 - Archived the A01 ECA-bias diagnostic: final internal validation was 72.41%

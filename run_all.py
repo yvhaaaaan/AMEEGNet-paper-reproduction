@@ -6,6 +6,7 @@ def main():
     p.add_argument("--epochs", type=int, default=500)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
+    p.add_argument("--input-scale", type=float, default=1.0)
     p.add_argument("--strict", action="store_true")
     p.add_argument("--deterministic", action="store_true")
     p.add_argument("--test-evaluation", choices=("final", "none", "each-epoch"),
@@ -37,7 +38,8 @@ def main():
         path = out / f"{sid}.json"
         cmd = [sys.executable, "run_s01.py", "--data", f"data/{sid}.npz",
                "--epochs", str(a.epochs), "--seed", str(a.seed),
-               "--device", a.device, "--out", str(path)]
+               "--device", a.device, "--input-scale", str(a.input_scale),
+               "--out", str(path)]
         if a.strict:
             cmd.append("--strict")
         if a.deterministic:

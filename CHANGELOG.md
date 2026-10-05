@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.49 - 2026-10-06
+
+- Added an opt-in DataLoader batch-order RNG audit. `isolated` remains the
+  default; `global` emulates a plain PyTorch DataLoader using global RNG state.
+
 # v1.0.47 - 2026-10-06
 
 - Archived the nine-subject Table 3 ablation audit for the paper-reconstruction

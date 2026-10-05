@@ -122,6 +122,16 @@ class ModelDiagnosticsTests(unittest.TestCase):
         for name, tensor in model.state_dict().items():
             self.assertTrue(torch.equal(tensor, before[name]), name)
 
+    def test_loader_rng_audit_is_exposed(self):
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, "run_s01.py", "--help"],
+            check=True, capture_output=True, text=True
+        )
+        self.assertIn("--loader-rng", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,7 @@ results/**/*.json
 results/**/*.log
 
 # Keep small Markdown audit summaries under results/ tracked.
+results/a01_*_v1_0_*
 
 # Local environment/editor files
 .venv/

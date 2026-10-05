@@ -41,6 +41,7 @@ def main():
     p.add_argument("--bn-momentum", type=float, default=0.1)
     p.add_argument("--log-every", type=int, default=100)
     p.add_argument("--checkpoint-every", type=int, default=0)
+    p.add_argument("--loader-rng", choices=("isolated", "global"), default="isolated")
     p.add_argument("--out", default="results/all_500")
     a = p.parse_args()
     out = Path(a.out)
@@ -102,7 +103,8 @@ def main():
             cmd.extend(["--init-mode", a.init_mode])
         cmd.extend(["--bn-eps", str(a.bn_eps), "--bn-momentum", str(a.bn_momentum),
                     "--log-every", str(a.log_every),
-                    "--checkpoint-every", str(a.checkpoint_every)])
+                    "--checkpoint-every", str(a.checkpoint_every),
+                    "--loader-rng", a.loader_rng])
         print("running", sid, flush=True)
         subprocess.run(cmd, check=True)
         result = json.loads(path.read_text(encoding="utf-8"))

@@ -127,6 +127,8 @@ def main():
                    help="PyTorch weight of the new batch statistics, not Keras momentum")
     p.add_argument("--log-every", type=int, default=100)
     p.add_argument("--checkpoint-every", type=int, default=0)
+    p.add_argument("--loader-rng", choices=("isolated", "global"), default="isolated",
+                   help="batch-order RNG source; global audits a plain DataLoader")
     p.add_argument("--elu-before-bn", action="store_true")
     p.add_argument("--paper-pooling", action="store_true")
     p.add_argument("--dropout", type=float, default=None)
@@ -222,10 +224,13 @@ def main():
            if a.strict else torch.optim.AdamW(model.parameters(), lr=1e-3,
                                               weight_decay=1e-4))
     loss_fn = nn.CrossEntropyLoss(label_smoothing=0.1 if not a.strict else 0.0)
-    gen = torch.Generator().manual_seed(a.seed)
+    gen = torch.Generator().manual_seed(a.seed) if a.loader_rng == "isolated" else None
+    loader_kwargs = {"batch_size": a.batch_size, "shuffle": True}
+    if gen is not None:
+        loader_kwargs["generator"] = gen
     loader = DataLoader(
         TensorDataset(torch.from_numpy(xtr[fit]), torch.from_numpy(ytr[fit])),
-        batch_size=a.batch_size, shuffle=True, generator=gen
+        **loader_kwargs
     )
 
     best = (-1.0, None, 0)
@@ -287,7 +292,8 @@ def main():
             checkpoint = checkpoint_dir / f"epoch_{ep:04d}.pt"
             torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),
                         "epoch": ep, "args": vars(a), "git_commit": commit,
-                        "data_sha256": data_digest, "loader_rng": gen.get_state(),
+                        "data_sha256": data_digest,
+                        "loader_rng": None if gen is None else gen.get_state(),
                         "torch_rng": torch.get_rng_state(),
                         "cuda_rng": torch.cuda.get_rng_state_all() if device.type == "cuda" else [],
                         "numpy_rng": np.random.get_state(), "python_rng": random.getstate(),
@@ -339,6 +345,7 @@ def main():
         "deterministic": a.deterministic,
         "test_evaluation": a.test_evaluation,
         "softmax_before_loss": a.softmax_before_loss,
+        "loader_rng": a.loader_rng,
         "final_test_acc": final_test_acc,
         "final_val_acc": final_val_acc, "final_val_loss": final_val_loss,
         "checkpoint_selection": (

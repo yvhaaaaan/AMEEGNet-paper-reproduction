@@ -4,6 +4,7 @@ from pathlib import Path
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--epochs", type=int, default=500)
+    p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
     p.add_argument("--input-scale", type=float, default=1.0)
@@ -27,6 +28,9 @@ def main():
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--eca-bias", action="store_true")
+    p.add_argument("--init-mode", choices=("default", "xavier_uniform",
+                                             "xavier_normal", "kaiming_normal"),
+                   default="default")
     p.add_argument("--bn-eps", type=float, default=1e-5)
     p.add_argument("--bn-momentum", type=float, default=0.1)
     p.add_argument("--log-every", type=int, default=100)
@@ -41,6 +45,7 @@ def main():
         path = out / f"{sid}.json"
         cmd = [sys.executable, "run_s01.py", "--data", f"data/{sid}.npz",
                "--epochs", str(a.epochs), "--seed", str(a.seed),
+               "--batch-size", str(a.batch_size),
                "--device", a.device, "--input-scale", str(a.input_scale),
                "--input-normalization", a.input_normalization,
                "--out", str(path)]
@@ -77,6 +82,8 @@ def main():
             cmd.append("--no-eca")
         if a.eca_bias:
             cmd.append("--eca-bias")
+        if a.init_mode != "default":
+            cmd.extend(["--init-mode", a.init_mode])
         cmd.extend(["--bn-eps", str(a.bn_eps), "--bn-momentum", str(a.bn_momentum),
                     "--log-every", str(a.log_every),
                     "--checkpoint-every", str(a.checkpoint_every)])

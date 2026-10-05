@@ -101,6 +101,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--data", required=True)
     p.add_argument("--epochs", type=int, default=500)
+    p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
     p.add_argument("--input-scale", type=float, default=1.0)
@@ -132,11 +133,14 @@ def main():
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--eca-bias", action="store_true")
+    p.add_argument("--init-mode", choices=("default", "xavier_uniform",
+                                             "xavier_normal", "kaiming_normal"),
+                   default="default")
     p.add_argument("--out", default="results/s01.json")
     a = p.parse_args()
     out = Path(a.out)
-    if a.epochs <= 0 or a.log_every < 0 or a.checkpoint_every < 0:
-        raise ValueError("epochs must be positive and log/checkpoint intervals nonnegative")
+    if a.epochs <= 0 or a.batch_size <= 0 or a.log_every < 0 or a.checkpoint_every < 0:
+        raise ValueError("epochs/batch-size must be positive and log/checkpoint intervals nonnegative")
     if not math.isfinite(a.input_scale) or a.input_scale <= 0:
         raise ValueError("input-scale must be finite and positive")
     if a.dropout is not None and (not math.isfinite(a.dropout) or not 0 <= a.dropout < 1):
@@ -195,7 +199,7 @@ def main():
         head_elu=not a.no_head_elu,
         head_dropout=head_dropout,
         bn_eps=a.bn_eps, bn_momentum=a.bn_momentum,
-        eca_bias=a.eca_bias,
+        eca_bias=a.eca_bias, init_mode=a.init_mode,
     ).to(device)
     initial_fingerprint = state_fingerprint(model)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
@@ -205,7 +209,7 @@ def main():
     gen = torch.Generator().manual_seed(a.seed)
     loader = DataLoader(
         TensorDataset(torch.from_numpy(xtr[fit]), torch.from_numpy(ytr[fit])),
-        batch_size=64, shuffle=True, generator=gen
+        batch_size=a.batch_size, shuffle=True, generator=gen
     )
 
     best = (-1.0, None, 0)
@@ -296,6 +300,7 @@ def main():
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
         "eca_bias": a.eca_bias,
+        "init_mode": a.init_mode,
         "norm_then_activation": not a.elu_before_bn,
         "bn_eps": a.bn_eps, "bn_momentum": a.bn_momentum,
         "validation_fraction": validation_fraction,
@@ -328,7 +333,7 @@ def main():
         "weight_decay": opt.defaults["weight_decay"], "betas": opt.defaults["betas"],
         "eps": opt.defaults["eps"],
         "gradient_clip_max_norm": None if a.strict else 5.0,
-        "batch_size": 64, "fit_samples": len(fit),
+        "batch_size": a.batch_size, "fit_samples": len(fit),
         "validation_samples": None if val is None else len(val),
         "test_samples": len(yte), "label_smoothing": 0.0 if a.strict else 0.1,
     }

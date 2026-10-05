@@ -81,7 +81,7 @@ class AMEEGNet(nn.Module):
                  bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, head_elu=True,
                  bn_eps=1e-5, bn_momentum=0.1, head_dropout=None,
-                 eca_bias=False):
+                 eca_bias=False, init_mode="default"):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")
@@ -91,6 +91,9 @@ class AMEEGNet(nn.Module):
             head_dropout = dropout
         if not math.isfinite(head_dropout) or not 0 <= head_dropout < 1:
             raise ValueError("head_dropout must be finite and in [0,1)")
+        if init_mode not in ("default", "xavier_uniform", "xavier_normal",
+                             "kaiming_normal"):
+            raise ValueError(f"unsupported init_mode: {init_mode}")
         self.fusion = fusion
         self.use_eca = eca
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
@@ -127,6 +130,22 @@ class AMEEGNet(nn.Module):
             head.append(nn.ELU())
         head.extend([nn.Dropout(head_dropout), nn.Linear(32, classes)])
         self.head = nn.Sequential(*head)
+        self.init_mode = init_mode
+        if init_mode != "default":
+            self._initialize_weights(init_mode)
+
+    def _initialize_weights(self, mode):
+        """Apply an explicit initialization for an architecture audit."""
+        for module in self.modules():
+            if isinstance(module, (nn.Conv1d, nn.Conv2d, nn.Linear)):
+                if mode == "xavier_uniform":
+                    nn.init.xavier_uniform_(module.weight)
+                elif mode == "xavier_normal":
+                    nn.init.xavier_normal_(module.weight)
+                elif mode == "kaiming_normal":
+                    nn.init.kaiming_normal_(module.weight, nonlinearity="relu")
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
 
     def _features(self, x):
         t1 = self.b1.temporal_out(x)

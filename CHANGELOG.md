@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.40 - 2026-10-05
+
+- Added explicit batch-size and weight-initialization switches for isolated
+  audits of paper details that are not reported in the article.
+- The default remains batch size 64 with untouched PyTorch initialization, so
+  the prior reproduction artifacts are unchanged.
+
 # v1.0.39 - 2026-10-05
 
 - Archived the clean Python 3.10 / PyTorch 1.12.1 + CUDA 11.6 nine-subject

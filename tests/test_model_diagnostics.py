@@ -2,9 +2,11 @@ import math
 import unittest
 
 import torch
+import numpy as np
 from torch import nn
 
 from ameegnet_ours import AMEEGNet
+from run_s01 import normalize_trials
 
 
 class ModelDiagnosticsTests(unittest.TestCase):
@@ -40,6 +42,16 @@ class ModelDiagnosticsTests(unittest.TestCase):
         with_bias = AMEEGNet(eca_bias=True)
         self.assertTrue(all(module.conv.bias is None for module in no_bias.attn))
         self.assertTrue(all(module.conv.bias is not None for module in with_bias.attn))
+
+    def test_trial_normalization_is_finite_and_scoped(self):
+        x = np.arange(2 * 22 * 5, dtype=np.float32).reshape(2, 22, 5)
+        self.assertTrue(np.array_equal(normalize_trials(x, "none"), x))
+        trial = normalize_trials(x, "trial")
+        channel = normalize_trials(x, "channel-trial")
+        self.assertTrue(np.allclose(trial.mean(axis=(1, 2)), 0))
+        self.assertTrue(np.allclose(trial.std(axis=(1, 2)), 1))
+        self.assertTrue(np.allclose(channel.mean(axis=2), 0))
+        self.assertTrue(np.allclose(channel.std(axis=2), 1))
 
     def test_finite_forward_backward_and_eval_state(self):
         torch.manual_seed(42)

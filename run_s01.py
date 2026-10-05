@@ -88,6 +88,15 @@ def evaluate(model, x, y, device, loss_fn):
     return loss, float(accuracy_score(y, pred)), pred
 
 
+def normalize_trials(x, mode):
+    if mode == "none":
+        return x
+    axes = (1, 2) if mode == "trial" else (2,)
+    mean = x.mean(axis=axes, keepdims=True)
+    std = x.std(axis=axes, keepdims=True).clip(min=1e-6)
+    return ((x - mean) / std).astype(np.float32)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--data", required=True)
@@ -95,6 +104,8 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--device", default="cuda")
     p.add_argument("--input-scale", type=float, default=1.0)
+    p.add_argument("--input-normalization", choices=("none", "trial", "channel-trial"),
+                   default="none")
     p.add_argument("--strict", action="store_true")
     p.add_argument("--deterministic", action="store_true",
                    help="enable deterministic PyTorch/CUDA algorithms")
@@ -148,6 +159,8 @@ def main():
     xtr, ytr, xte, yte = load_subject_npz(a.data)
     xtr = (xtr * a.input_scale).astype(np.float32)
     xte = (xte * a.input_scale).astype(np.float32)
+    xtr = normalize_trials(xtr, a.input_normalization)
+    xte = normalize_trials(xte, a.input_normalization)
     if a.reverse_sessions:
         xtr, ytr, xte, yte = xte, yte, xtr, ytr
     if not a.strict:
@@ -273,6 +286,7 @@ def main():
         "data_path": str(Path(a.data).resolve()),
         "data_sha256": data_digest, "source_sha256": source_hashes,
         "input_scale": a.input_scale,
+        "input_normalization": a.input_normalization,
         "strict": a.strict, "paper_pooling": a.paper_pooling,
         "dropout": dropout, "dropout_after_pool": a.dropout_after_pool,
         "head_dropout": head_dropout,

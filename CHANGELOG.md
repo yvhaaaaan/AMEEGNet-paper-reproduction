@@ -1,5 +1,13 @@
 # Changelog
 
+# v1.0.34 - 2026-10-05
+
+- Added explicit `none`, per-trial, and per-channel-per-trial input
+  normalization diagnostics. The default remains no normalization, matching
+  the paper's stated segmentation-only preprocessing.
+- Archived the isolated `1e-6` input-scale check as a negative unit hypothesis
+  candidate; it is not promoted to a batch.
+
 # v1.0.33 - 2026-10-05
 
 - Added an explicit positive input-scale parameter and provenance field to

@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.30 - 2026-10-05
+
+- Archived a post-hoc audit of existing target-session curves. Selecting the
+  per-subject maximum test accuracy after training raised historical means by
+  only 2.62--3.51 percentage points, to 67.36--74.27%, still below the paper
+  mean; these values remain exploratory and are not formal results.
+
 # v1.0.29 - 2026-10-05
 
 - Archived the literal classification-head A01 diagnostic: no Dense(32)

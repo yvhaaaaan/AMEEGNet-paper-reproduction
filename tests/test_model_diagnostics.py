@@ -23,6 +23,7 @@ class ModelDiagnosticsTests(unittest.TestCase):
     def test_architecture_audit_shapes_and_gradients(self):
         torch.set_num_threads(1)
         settings = ({"eca_stage": "depth_pre_sep"},
+                    {"eca_stage": "sep_pre_pool"},
                     {"fixed_fusion_channels": True},
                     {"init_mode": "xavier_uniform"},
                     {"init_mode": "xavier_normal"},

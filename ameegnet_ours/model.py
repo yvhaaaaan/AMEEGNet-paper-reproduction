@@ -53,7 +53,8 @@ class Branch(nn.Module):
         return self.bn_t(self.temporal(same_time(x, self.temporal.kernel_size[1])))
 
     def from_temporal(self, h, temporal_fusion=None, depth_fusion=None,
-                      depth_gate=None, depth_pre_activation=False):
+                      depth_gate=None, depth_pre_activation=False,
+                      sep_gate=None):
         if temporal_fusion is not None:
             h = torch.cat((temporal_fusion, h), dim=1)
         h = self.depth(h)
@@ -75,6 +76,8 @@ class Branch(nn.Module):
         h = self.sep_pw(self.sep_dw(h))
         h = self.bn_s(h) if self.norm_then_activation else self.bn_s(F.elu(h))
         h = F.elu(h) if self.norm_then_activation else h
+        if sep_gate is not None:
+            h = sep_gate(h)
         if not self.dropout_after_pool:
             h = self.drop(h)
         h = self.pool2(h)
@@ -108,7 +111,7 @@ class AMEEGNet(nn.Module):
         if init_mode not in ("default", "xavier_uniform", "xavier_normal",
                              "kaiming_normal"):
             raise ValueError(f"unsupported init_mode: {init_mode}")
-        if eca_stage not in ("output", "depth_pre_sep"):
+        if eca_stage not in ("output", "depth_pre_sep", "sep_pre_pool"):
             raise ValueError(f"unsupported eca_stage: {eca_stage}")
         self.fusion = fusion
         self.use_eca = eca
@@ -144,7 +147,7 @@ class AMEEGNet(nn.Module):
                          dropout_after_pool=dropout_after_pool,
                          bn_eps=bn_eps, bn_momentum=bn_momentum,
                          fusion_pre_activation=fusion_pre_activation)
-        if eca_stage == "output":
+        if eca_stage in ("output", "sep_pre_pool"):
             eca_channels = [8, 16, 32]
         else:
             eca_channels = [self.b1.depth.out_channels,
@@ -199,6 +202,15 @@ class AMEEGNet(nn.Module):
                 t3, depth_fusion=d2 if self.fusion else None,
                 depth_gate=self.attn[2],
                 depth_pre_activation=self.fusion_pre_activation)
+            return [h1, h2, h3]
+        if self.use_eca and self.eca_stage == "sep_pre_pool":
+            h1, _ = self.b1.from_temporal(t1, sep_gate=self.attn[0])
+            h2, d2 = self.b2.from_temporal(
+                t2, temporal_fusion=t1 if self.fusion else None,
+                sep_gate=self.attn[1])
+            h3, _ = self.b3.from_temporal(
+                t3, depth_fusion=d2 if self.fusion else None,
+                sep_gate=self.attn[2])
             return [h1, h2, h3]
         h1, _ = self.b1.from_temporal(
             t1, depth_pre_activation=self.fusion_pre_activation)

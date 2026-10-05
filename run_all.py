@@ -30,7 +30,7 @@ def main():
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--eca-bias", action="store_true")
-    p.add_argument("--eca-stage", choices=("output", "depth_pre_sep"),
+    p.add_argument("--eca-stage", choices=("output", "depth_pre_sep", "sep_pre_pool"),
                    default="output")
     p.add_argument("--fixed-fusion-channels", action="store_true")
     p.add_argument("--fusion-pre-activation", action="store_true")

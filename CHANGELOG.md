@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.50 - 2026-10-06
+
+- Added an opt-in ECA placement audit immediately after separable convolution
+  and before the second pooling stage, matching the placement shown in the
+  paper's architecture figure. The default output-stage placement is unchanged.
+
 # v1.0.49 - 2026-10-06
 
 - Added an opt-in DataLoader batch-order RNG audit. `isolated` remains the

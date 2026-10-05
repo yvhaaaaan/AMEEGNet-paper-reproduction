@@ -141,7 +141,7 @@ def main():
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--eca-bias", action="store_true")
-    p.add_argument("--eca-stage", choices=("output", "depth_pre_sep"),
+    p.add_argument("--eca-stage", choices=("output", "depth_pre_sep", "sep_pre_pool"),
                    default="output")
     p.add_argument("--fixed-fusion-channels", action="store_true",
                    help="图示审计：融合后保持 F2*D 输出通道数")

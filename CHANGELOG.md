@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.36 - 2026-10-05
+
+- Added an isolated max-norm constraint for the AMEEGNet Dense(32) layer;
+  default behavior remains unchanged and only the final classifier is
+  constrained when `--max-norm` is enabled.
+
 # v1.0.35 - 2026-10-05
 
 - Corrected the float32 tolerance in the trial-normalization unit test; no

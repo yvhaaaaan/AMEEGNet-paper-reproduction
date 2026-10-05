@@ -126,6 +126,7 @@ def main():
     p.add_argument("--dropout-after-pool", action="store_true")
     p.add_argument("--no-head-dropout", action="store_true")
     p.add_argument("--max-norm", action="store_true")
+    p.add_argument("--hidden-max-norm", action="store_true")
     p.add_argument("--no-head-elu", action="store_true")
     p.add_argument("--reverse-sessions", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
@@ -231,7 +232,7 @@ def main():
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
             if a.max_norm:
-                model.project_eegnet_max_norm()
+                model.project_eegnet_max_norm(hidden_max=0.25 if a.hidden_max_norm else None)
             total += loss.item() * len(yb)
             preds.extend(logits.argmax(1).detach().cpu().numpy())
             ys.extend(yb.cpu().numpy())
@@ -291,6 +292,7 @@ def main():
         "dropout": dropout, "dropout_after_pool": a.dropout_after_pool,
         "head_dropout": head_dropout,
         "max_norm": a.max_norm, "head_elu": not a.no_head_elu,
+        "hidden_max_norm": a.hidden_max_norm,
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
         "eca_bias": a.eca_bias,

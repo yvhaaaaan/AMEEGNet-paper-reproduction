@@ -19,6 +19,7 @@ def main():
     p.add_argument("--dropout-after-pool", action="store_true")
     p.add_argument("--no-head-dropout", action="store_true")
     p.add_argument("--max-norm", action="store_true")
+    p.add_argument("--hidden-max-norm", action="store_true")
     p.add_argument("--no-bn-first", action="store_true")
     p.add_argument("--elu-before-bn", action="store_true")
     p.add_argument("--no-head-elu", action="store_true")
@@ -60,6 +61,8 @@ def main():
             cmd.append("--no-head-dropout")
         if a.max_norm:
             cmd.append("--max-norm")
+        if a.hidden_max_norm:
+            cmd.append("--hidden-max-norm")
         if a.no_bn_first:
             cmd.append("--no-bn-first")
         if a.elu_before_bn:

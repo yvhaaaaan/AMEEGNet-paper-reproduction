@@ -146,7 +146,8 @@ class AMEEGNet(nn.Module):
         return self.head(torch.cat(self._features(x), dim=1).flatten(1))
 
     @torch.no_grad()
-    def project_eegnet_max_norm(self, spatial_max=1.0, classifier_max=0.25):
+    def project_eegnet_max_norm(self, spatial_max=1.0, classifier_max=0.25,
+                                hidden_max=None):
         """Apply the standard EEGNet kernel constraints after an optimizer step."""
         for branch in (self.b1, self.b2, self.b3):
             weight = branch.depth.weight
@@ -155,3 +156,7 @@ class AMEEGNet(nn.Module):
         weight = self.head[-1].weight
         norms = weight.norm(p=2, dim=1, keepdim=True).clamp_min(1e-12)
         weight.mul_((classifier_max / norms).clamp(max=1.0))
+        if hidden_max is not None:
+            weight = self.head[0].weight
+            norms = weight.norm(p=2, dim=1, keepdim=True).clamp_min(1e-12)
+            weight.mul_((hidden_max / norms).clamp(max=1.0))

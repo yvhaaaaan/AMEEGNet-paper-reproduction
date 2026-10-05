@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.35 - 2026-10-05
+
+- Corrected the float32 tolerance in the trial-normalization unit test; no
+  runtime behavior changed.
+
 # v1.0.34 - 2026-10-05
 
 - Added explicit `none`, per-trial, and per-channel-per-trial input

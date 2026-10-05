@@ -50,8 +50,8 @@ class ModelDiagnosticsTests(unittest.TestCase):
         channel = normalize_trials(x, "channel-trial")
         self.assertTrue(np.allclose(trial.mean(axis=(1, 2)), 0))
         self.assertTrue(np.allclose(trial.std(axis=(1, 2)), 1))
-        self.assertTrue(np.allclose(channel.mean(axis=2), 0))
-        self.assertTrue(np.allclose(channel.std(axis=2), 1))
+        self.assertTrue(np.allclose(channel.mean(axis=2), 0, atol=1e-6))
+        self.assertTrue(np.allclose(channel.std(axis=2), 1, atol=1e-6))
 
     def test_finite_forward_backward_and_eval_state(self):
         torch.manual_seed(42)

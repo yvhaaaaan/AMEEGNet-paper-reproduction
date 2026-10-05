@@ -1,5 +1,13 @@
 # Changelog
 
+# v1.0.32 - 2026-10-05
+
+- Archived the A01 ECA-bias diagnostic: final internal validation was 72.41%
+  and the best internal validation was 81.03% at epoch 298; target evaluation
+  remained disabled.
+- Did not promote the ECA-bias hypothesis to a nine-subject run because it did
+  not improve the controlled A01 diagnostic.
+
 # v1.0.31 - 2026-10-05
 
 - Added an isolated ECA convolution-bias switch for a literal audit of the

@@ -11,6 +11,7 @@ results/**/*.log
 
 # Keep small Markdown audit summaries under results/ tracked.
 results/a01_*_v1_0_*
+results/paper_figure*.webp
 
 # Local environment/editor files
 .venv/

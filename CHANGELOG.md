@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.52 - 2026-10-06
+
+- Added an opt-in branch-convolution bias audit. Default `bias=False` and
+  existing model initializations remain unchanged; ECA bias is independent.
+- Preregistered a source-only A01 bias pilot. No target score is used to
+  select the factor or to decide whether to run the source-session follow-up.
+
 # v1.0.51 - 2026-10-06
 
 - Extended the batch auditor to compare the Softmax-loss, fusion activation,

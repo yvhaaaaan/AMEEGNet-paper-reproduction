@@ -141,6 +141,8 @@ def main():
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--eca-bias", action="store_true")
+    p.add_argument("--conv-bias", action="store_true",
+                   help="audit PyTorch-default biases in the branch convolutions")
     p.add_argument("--eca-stage", choices=("output", "depth_pre_sep", "sep_pre_pool"),
                    default="output")
     p.add_argument("--fixed-fusion-channels", action="store_true",
@@ -218,6 +220,7 @@ def main():
         eca_bias=a.eca_bias, init_mode=a.init_mode, eca_stage=a.eca_stage,
         fixed_fusion_channels=a.fixed_fusion_channels,
         fusion_pre_activation=a.fusion_pre_activation,
+        conv_bias=a.conv_bias,
     ).to(device)
     initial_fingerprint = state_fingerprint(model)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
@@ -333,6 +336,7 @@ def main():
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
         "eca_bias": a.eca_bias,
+        "conv_bias": a.conv_bias,
         "eca_stage": a.eca_stage,
         "fixed_fusion_channels": a.fixed_fusion_channels,
         "fusion_pre_activation": a.fusion_pre_activation,

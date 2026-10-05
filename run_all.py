@@ -30,6 +30,7 @@ def main():
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--eca-bias", action="store_true")
+    p.add_argument("--conv-bias", action="store_true")
     p.add_argument("--eca-stage", choices=("output", "depth_pre_sep", "sep_pre_pool"),
                    default="output")
     p.add_argument("--fixed-fusion-channels", action="store_true")
@@ -93,6 +94,8 @@ def main():
             cmd.append("--no-eca")
         if a.eca_bias:
             cmd.append("--eca-bias")
+        if a.conv_bias:
+            cmd.append("--conv-bias")
         if a.eca_stage != "output":
             cmd.extend(["--eca-stage", a.eca_stage])
         if a.fixed_fusion_channels:

@@ -41,6 +41,7 @@ def main():
             "norm_then_activation", "bn_eps", "bn_momentum", "seed", "epochs",
             "device", "deterministic", "test_evaluation", "checkpoint_selection",
             "softmax_before_loss", "fusion_pre_activation", "loader_rng",
+            "conv_bias",
         )})
         source_hashes.append(result.get("source_sha256"))
         history = result.get("history", [])

@@ -16,7 +16,7 @@ class ModelDiagnosticsTests(unittest.TestCase):
         implicit = AMEEGNet()
         torch.manual_seed(42)
         explicit = AMEEGNet(init_mode="default", eca_stage="output",
-                            fixed_fusion_channels=False)
+                            fixed_fusion_channels=False, conv_bias=False)
         for name, tensor in implicit.state_dict().items():
             self.assertTrue(torch.equal(tensor, explicit.state_dict()[name]), name)
 
@@ -24,6 +24,7 @@ class ModelDiagnosticsTests(unittest.TestCase):
         torch.set_num_threads(1)
         settings = ({"eca_stage": "depth_pre_sep"},
                     {"eca_stage": "sep_pre_pool"},
+                    {"conv_bias": True},
                     {"fixed_fusion_channels": True},
                     {"init_mode": "xavier_uniform"},
                     {"init_mode": "xavier_normal"},
@@ -88,6 +89,15 @@ class ModelDiagnosticsTests(unittest.TestCase):
         with_bias = AMEEGNet(eca_bias=True)
         self.assertTrue(all(module.conv.bias is None for module in no_bias.attn))
         self.assertTrue(all(module.conv.bias is not None for module in with_bias.attn))
+
+    def test_branch_conv_bias_is_independent_of_eca_bias(self):
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled):
+                model = AMEEGNet(conv_bias=enabled, eca_bias=False)
+                for module in model.modules():
+                    if isinstance(module, nn.Conv2d):
+                        self.assertEqual(module.bias is not None, enabled)
+                self.assertTrue(all(module.conv.bias is None for module in model.attn))
 
     def test_trial_normalization_is_finite_and_scoped(self):
         x = np.arange(2 * 22 * 5, dtype=np.float32).reshape(2, 22, 5)

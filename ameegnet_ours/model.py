@@ -26,21 +26,22 @@ class Branch(nn.Module):
     def __init__(self, channels, f1, kernel, depth_in=None, sep_in=None,
                  pool=True, dropout=0.25, bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, bn_eps=1e-5, bn_momentum=0.1,
-                 depth_out=None, depth_groups=None, fusion_pre_activation=False):
+                 depth_out=None, depth_groups=None, fusion_pre_activation=False,
+                 conv_bias=False):
         super().__init__()
         depth_in = depth_in or f1
         sep_in = sep_in or depth_in * 2
-        self.temporal = nn.Conv2d(1, f1, (1, kernel), bias=False)
+        self.temporal = nn.Conv2d(1, f1, (1, kernel), bias=conv_bias)
         self.bn_t = nn.BatchNorm2d(f1, eps=bn_eps, momentum=bn_momentum) if bn_first else nn.Identity()
         depth_out = depth_in * 2 if depth_out is None else depth_out
         depth_groups = depth_in if depth_groups is None else depth_groups
         if depth_out % depth_groups != 0:
             raise ValueError("depth_out must be divisible by depth_groups")
         self.depth = nn.Conv2d(depth_in, depth_out, (channels, 1),
-                               groups=depth_groups, bias=False)
+                               groups=depth_groups, bias=conv_bias)
         self.bn_d = nn.BatchNorm2d(depth_out, eps=bn_eps, momentum=bn_momentum)
-        self.sep_dw = nn.Conv2d(sep_in, sep_in, (1, 16), groups=sep_in, bias=False)
-        self.sep_pw = nn.Conv2d(sep_in, f1 * 2, 1, bias=False)
+        self.sep_dw = nn.Conv2d(sep_in, sep_in, (1, 16), groups=sep_in, bias=conv_bias)
+        self.sep_pw = nn.Conv2d(sep_in, f1 * 2, 1, bias=conv_bias)
         self.bn_s = nn.BatchNorm2d(f1 * 2, eps=bn_eps, momentum=bn_momentum)
         self.norm_then_activation = norm_then_activation
         self.fusion_pre_activation = fusion_pre_activation
@@ -98,7 +99,8 @@ class AMEEGNet(nn.Module):
                  dropout_after_pool=False, head_elu=True,
                  bn_eps=1e-5, bn_momentum=0.1, head_dropout=None,
                  eca_bias=False, init_mode="default", eca_stage="output",
-                 fixed_fusion_channels=False, fusion_pre_activation=False):
+                 fixed_fusion_channels=False, fusion_pre_activation=False,
+                 conv_bias=False):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")
@@ -122,7 +124,8 @@ class AMEEGNet(nn.Module):
                          bn_first=bn_first, norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
                          bn_eps=bn_eps, bn_momentum=bn_momentum,
-                         fusion_pre_activation=fusion_pre_activation)
+                         fusion_pre_activation=fusion_pre_activation,
+                         conv_bias=conv_bias)
         b2_depth_in = 12 if fusion else 8
         if fusion and fixed_fusion_channels:
             b2_depth_out = 16
@@ -140,13 +143,15 @@ class AMEEGNet(nn.Module):
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
                          bn_eps=bn_eps, bn_momentum=bn_momentum,
-                         fusion_pre_activation=fusion_pre_activation)
+                         fusion_pre_activation=fusion_pre_activation,
+                         conv_bias=conv_bias)
         self.b3 = Branch(channels, 16, 64, depth_in=16, sep_in=b3_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
                          bn_eps=bn_eps, bn_momentum=bn_momentum,
-                         fusion_pre_activation=fusion_pre_activation)
+                         fusion_pre_activation=fusion_pre_activation,
+                         conv_bias=conv_bias)
         if eca_stage in ("output", "sep_pre_pool"):
             eca_channels = [8, 16, 32]
         else:

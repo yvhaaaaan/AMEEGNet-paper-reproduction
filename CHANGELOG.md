@@ -244,3 +244,10 @@
 - Added the reproduction matrix and protocol audit.
 - Added strict A01 training artifacts and documented the Adam/no-clipping protocol correction.
 - Excluded local datasets, checkpoints, and generated JSON artifacts from Git tracking.
+## v1.0.37 - 2026-10-05
+
+- Added an audit script for the nine-subject hidden-Dense max-norm batch.
+- Archived the final-only batch provenance and prediction consistency checks.
+- Confirmed 9/9 subjects, 1000 epochs, 288/288 train/test trials, and no
+  target-session evaluation during training for the audited batch.
+

@@ -80,7 +80,7 @@ class AMEEGNet(nn.Module):
                  pool=True, dropout=0.25, fusion=True, eca=True,
                  bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, head_elu=True,
-                 head_dropout=None, bn_eps=1e-5, bn_momentum=0.1):
+                 bn_eps=1e-5, bn_momentum=0.1, head_dropout=None):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")

@@ -1,5 +1,14 @@
 # Changelog
 
+# v1.0.29 - 2026-10-05
+
+- Archived the literal classification-head A01 diagnostic: no Dense(32)
+  activation and no head dropout; final internal validation was 65.52% and
+  the best internal validation was 81.03% at epoch 743, with zero target
+  Session evaluations.
+- Moved the new `head_dropout` argument after the existing BatchNorm
+  arguments to preserve positional-call compatibility for the model API.
+
 # v1.0.28 - 2026-10-05
 
 - Added an independent A01 diagnostics auditor that re-evaluates saved

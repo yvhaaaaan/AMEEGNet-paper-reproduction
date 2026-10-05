@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.47 - 2026-10-06
+
+- Archived the nine-subject Table 3 ablation audit for the paper-reconstruction
+  candidate. This release contains no model or training-code change.
+
 # v1.0.46 - 2026-10-06
 
 - Added an opt-in fusion-output audit that passes depth-convolution outputs

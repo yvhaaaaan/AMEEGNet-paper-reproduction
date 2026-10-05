@@ -14,6 +14,7 @@ def main():
     p.add_argument("--deterministic", action="store_true")
     p.add_argument("--test-evaluation", choices=("final", "none", "each-epoch"),
                    default="final")
+    p.add_argument("--softmax-before-loss", action="store_true")
     p.add_argument("--validation-fraction", type=float, default=None)
     p.add_argument("--select-best-validation", action="store_true")
     p.add_argument("--paper-pooling", action="store_true")
@@ -58,6 +59,8 @@ def main():
         if a.deterministic:
             cmd.append("--deterministic")
         cmd.extend(["--test-evaluation", a.test_evaluation])
+        if a.softmax_before_loss:
+            cmd.append("--softmax-before-loss")
         if a.validation_fraction is not None:
             cmd.extend(["--validation-fraction", str(a.validation_fraction)])
         if a.select_best_validation:

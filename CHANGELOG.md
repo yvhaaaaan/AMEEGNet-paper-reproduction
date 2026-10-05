@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.45 - 2026-10-06
+
+- Added an opt-in audit for the paper's explicit Softmax-output wording when
+  paired with CrossEntropyLoss. The default remains the PyTorch-correct logits
+  input and existing result artifacts are unchanged.
+
 # v1.0.44 - 2026-10-05
 
 - Added an opt-in source-session validation checkpoint selection switch.

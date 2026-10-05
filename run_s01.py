@@ -77,13 +77,15 @@ def state_fingerprint(model):
     return digest.hexdigest()
 
 
-def evaluate(model, x, y, device, loss_fn):
+def evaluate(model, x, y, device, loss_fn, softmax_before_loss=False):
     model.eval()
     with torch.no_grad():
         xt = torch.from_numpy(x).to(device)
         yt = torch.from_numpy(y).to(device)
         logits = model(xt)
-        loss = float(loss_fn(logits, yt).item())
+        loss_input = (torch.softmax(logits, dim=1) if softmax_before_loss
+                      else logits)
+        loss = float(loss_fn(loss_input, yt).item())
         pred = logits.argmax(1).cpu().numpy()
     return loss, float(accuracy_score(y, pred)), pred
 
@@ -117,6 +119,8 @@ def main():
     p.add_argument("--test-evaluation", choices=("final", "none", "each-epoch"),
                    default="final",
                    help="when to evaluate the held-out target session")
+    p.add_argument("--softmax-before-loss", action="store_true",
+                   help="audit the paper's explicit Softmax followed by CrossEntropy wording")
     p.add_argument("--no-bn-first", action="store_true")
     p.add_argument("--bn-eps", type=float, default=1e-5)
     p.add_argument("--bn-momentum", type=float, default=0.1,
@@ -236,7 +240,9 @@ def main():
             xb, yb = xb.to(device), yb.to(device)
             opt.zero_grad(set_to_none=True)
             logits = model(xb)
-            loss = loss_fn(logits, yb)
+            loss_input = (torch.softmax(logits, dim=1) if a.softmax_before_loss
+                          else logits)
+            loss = loss_fn(loss_input, yb)
             if not torch.isfinite(loss):
                 raise FloatingPointError(f"Non-finite loss at epoch {ep}")
             loss.backward()
@@ -254,14 +260,18 @@ def main():
         train_acc = float(accuracy_score(ys, preds))
         val_loss = val_acc = None
         if val is not None:
-            val_loss, val_acc, _ = evaluate(model, xtr[val], ytr[val], device, loss_fn)
+            val_loss, val_acc, _ = evaluate(
+                model, xtr[val], ytr[val], device, loss_fn, a.softmax_before_loss
+            )
             if val_acc > best[0]:
                 best = (val_acc,
                         {k: v.detach().cpu().clone() for k, v in model.state_dict().items()},
                         ep)
         test_acc = None
         if a.test_evaluation == "each-epoch":
-            _, test_acc, _ = evaluate(model, xte, yte, device, loss_fn)
+            _, test_acc, _ = evaluate(
+                model, xte, yte, device, loss_fn, a.softmax_before_loss
+            )
             test_evaluations += 1
         history.append({"epoch": ep, "train_loss": train_loss,
                         "train_acc": train_acc, "val_loss": val_loss,
@@ -289,12 +299,14 @@ def main():
     val_pred = np.array([], dtype=np.int64)
     if val is not None:
         final_val_loss, final_val_acc, val_pred = evaluate(
-            model, xtr[val], ytr[val], device, loss_fn
+            model, xtr[val], ytr[val], device, loss_fn, a.softmax_before_loss
         )
     final_test_acc = None
     final_pred = np.array([], dtype=np.int64)
     if a.test_evaluation != "none":
-        _, final_test_acc, final_pred = evaluate(model, xte, yte, device, loss_fn)
+        _, final_test_acc, final_pred = evaluate(
+            model, xte, yte, device, loss_fn, a.softmax_before_loss
+        )
         test_evaluations += 1
     elapsed = time.perf_counter() - t0
     result = {
@@ -322,6 +334,7 @@ def main():
         "seed": a.seed, "epochs": a.epochs, "device": str(device),
         "deterministic": a.deterministic,
         "test_evaluation": a.test_evaluation,
+        "softmax_before_loss": a.softmax_before_loss,
         "final_test_acc": final_test_acc,
         "final_val_acc": final_val_acc, "final_val_loss": final_val_loss,
         "checkpoint_selection": (
@@ -353,6 +366,7 @@ def main():
         "batch_size": a.batch_size, "fit_samples": len(fit),
         "validation_samples": None if val is None else len(val),
         "test_samples": len(yte), "label_smoothing": 0.0 if a.strict else 0.1,
+        "loss_input": "softmax_probabilities" if a.softmax_before_loss else "logits",
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),

@@ -1,5 +1,15 @@
 # Changelog
 
+# v1.0.28 - 2026-10-05
+
+- Added an independent A01 diagnostics auditor that re-evaluates saved
+  validation predictions, verifies split/provenance/checkpoint integrity, and
+  confirms that no target Session was evaluated.
+- Added model unit tests for BatchNorm controls, classifier-head dropout,
+  finite forward/backward behavior, and deterministic evaluation state.
+- Archived the verified v1.0.27 diagnostic report and corrected the BN
+  interpretation to preserve its 10.34-point endpoint difference.
+
 # v1.0.27 - 2026-10-05
 
 - Archived the A01 BN epsilon/momentum diagnostic: changing BatchNorm

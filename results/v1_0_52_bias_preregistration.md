@@ -20,3 +20,11 @@ convolutional biases; `bias=False` follows the EEGNet convention whereas
   choose or evaluate a new target-Session candidate based on the pilot alone.
 - All prior target-inspected reconstructions remain exploratory evidence,
   even when an individual run evaluates target labels only once.
+
+## Pilot outcome
+
+The no-bias run ended at `93.10%` source validation accuracy, with a best
+source-validation accuracy of `94.83%` at epoch 891. The convolution-bias run
+ended at `75.86%`, with a best source-validation accuracy of `89.66%` at epoch
+337. The bias-enabled variant was rejected before any target-Session
+evaluation or multi-subject follow-up.

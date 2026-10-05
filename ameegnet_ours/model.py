@@ -12,9 +12,9 @@ def same_time(x, kernel):
 
 
 class ECA(nn.Module):
-    def __init__(self, channels, kernel=3):
+    def __init__(self, channels, kernel=3, bias=False):
         super().__init__()
-        self.conv = nn.Conv1d(1, 1, kernel, padding=kernel // 2, bias=False)
+        self.conv = nn.Conv1d(1, 1, kernel, padding=kernel // 2, bias=bias)
 
     def forward(self, x):
         w = x.mean(dim=(2, 3), keepdim=False).unsqueeze(1)
@@ -80,7 +80,8 @@ class AMEEGNet(nn.Module):
                  pool=True, dropout=0.25, fusion=True, eca=True,
                  bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, head_elu=True,
-                 bn_eps=1e-5, bn_momentum=0.1, head_dropout=None):
+                 bn_eps=1e-5, bn_momentum=0.1, head_dropout=None,
+                 eca_bias=False):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")
@@ -109,7 +110,8 @@ class AMEEGNet(nn.Module):
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
                          bn_eps=bn_eps, bn_momentum=bn_momentum)
-        self.attn = nn.ModuleList([ECA(8), ECA(16), ECA(32)])
+        self.attn = nn.ModuleList([ECA(8, bias=eca_bias), ECA(16, bias=eca_bias),
+                                   ECA(32, bias=eca_bias)])
         # All branches preserve time in their convolutions.  Pooling therefore
         # changes 1125 to floor((floor((1125-4)/4+1)-8)/8+1)=35.
         # Infer the head width analytically so construction does not update BN

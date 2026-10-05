@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.31 - 2026-10-05
+
+- Added an isolated ECA convolution-bias switch for a literal audit of the
+  paper's `W*z+b` equation; the default remains bias-free ECA.
+
 # v1.0.30 - 2026-10-05
 
 - Archived a post-hoc audit of existing target-session curves. Selecting the

@@ -22,6 +22,7 @@ def main():
     p.add_argument("--reverse-sessions", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
+    p.add_argument("--eca-bias", action="store_true")
     p.add_argument("--bn-eps", type=float, default=1e-5)
     p.add_argument("--bn-momentum", type=float, default=0.1)
     p.add_argument("--log-every", type=int, default=100)
@@ -66,6 +67,8 @@ def main():
             cmd.append("--no-fusion")
         if a.no_eca:
             cmd.append("--no-eca")
+        if a.eca_bias:
+            cmd.append("--eca-bias")
         cmd.extend(["--bn-eps", str(a.bn_eps), "--bn-momentum", str(a.bn_momentum),
                     "--log-every", str(a.log_every),
                     "--checkpoint-every", str(a.checkpoint_every)])

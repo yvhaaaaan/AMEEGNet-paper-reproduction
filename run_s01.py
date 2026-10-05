@@ -118,6 +118,7 @@ def main():
     p.add_argument("--reverse-sessions", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
+    p.add_argument("--eca-bias", action="store_true")
     p.add_argument("--out", default="results/s01.json")
     a = p.parse_args()
     out = Path(a.out)
@@ -175,6 +176,7 @@ def main():
         head_elu=not a.no_head_elu,
         head_dropout=head_dropout,
         bn_eps=a.bn_eps, bn_momentum=a.bn_momentum,
+        eca_bias=a.eca_bias,
     ).to(device)
     initial_fingerprint = state_fingerprint(model)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
@@ -271,6 +273,7 @@ def main():
         "max_norm": a.max_norm, "head_elu": not a.no_head_elu,
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
+        "eca_bias": a.eca_bias,
         "norm_then_activation": not a.elu_before_bn,
         "bn_eps": a.bn_eps, "bn_momentum": a.bn_momentum,
         "validation_fraction": validation_fraction,

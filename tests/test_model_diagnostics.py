@@ -35,6 +35,12 @@ class ModelDiagnosticsTests(unittest.TestCase):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 AMEEGNet(**values)
 
+    def test_eca_bias_switch(self):
+        no_bias = AMEEGNet(eca_bias=False)
+        with_bias = AMEEGNet(eca_bias=True)
+        self.assertTrue(all(module.conv.bias is None for module in no_bias.attn))
+        self.assertTrue(all(module.conv.bias is not None for module in with_bias.attn))
+
     def test_finite_forward_backward_and_eval_state(self):
         torch.manual_seed(42)
         torch.set_num_threads(1)

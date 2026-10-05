@@ -1,5 +1,15 @@
 # Changelog
 
+# v1.0.39 - 2026-10-05
+
+- Archived the clean Python 3.10 / PyTorch 1.12.1 + CUDA 11.6 nine-subject
+  reproduction batch using the v1.0.38 source tree.
+- The final-only T-to-E result was 76.35% +/- 11.36% (n=9), with all nine
+  subjects completing successfully and the batch auditor reporting no errors.
+- The framework-version audit matched the Python 3.12 A01 result exactly;
+  changing to the paper-era interpreter/runtime did not explain the remaining
+  gap to the reported 81.17%.
+
 # v1.0.36 - 2026-10-05
 
 - Added an isolated max-norm constraint for the AMEEGNet Dense(32) layer;

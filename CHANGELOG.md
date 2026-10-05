@@ -251,3 +251,9 @@
 - Confirmed 9/9 subjects, 1000 epochs, 288/288 train/test trials, and no
   target-session evaluation during training for the audited batch.
 
+## v1.0.38 - 2026-10-05
+
+- Archived the audited nine-subject dropout=0.25 reconstruction batch.
+- Added the final-only batch audit and comparison against the preceding
+  dropout=0.50 hidden-Dense max-norm candidate.
+

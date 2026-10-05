@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.46 - 2026-10-06
+
+- Added an opt-in fusion-output audit that passes depth-convolution outputs
+  before BN/ELU into the second fusion junction. The default remains the
+  post-BN/ELU output used by prior runs.
+
 # v1.0.45 - 2026-10-06
 
 - Added an opt-in audit for the paper's explicit Softmax-output wording when

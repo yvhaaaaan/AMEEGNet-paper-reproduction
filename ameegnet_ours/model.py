@@ -26,7 +26,7 @@ class Branch(nn.Module):
     def __init__(self, channels, f1, kernel, depth_in=None, sep_in=None,
                  pool=True, dropout=0.25, bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, bn_eps=1e-5, bn_momentum=0.1,
-                 depth_out=None, depth_groups=None):
+                 depth_out=None, depth_groups=None, fusion_pre_activation=False):
         super().__init__()
         depth_in = depth_in or f1
         sep_in = sep_in or depth_in * 2
@@ -43,6 +43,7 @@ class Branch(nn.Module):
         self.sep_pw = nn.Conv2d(sep_in, f1 * 2, 1, bias=False)
         self.bn_s = nn.BatchNorm2d(f1 * 2, eps=bn_eps, momentum=bn_momentum)
         self.norm_then_activation = norm_then_activation
+        self.fusion_pre_activation = fusion_pre_activation
         self.dropout_after_pool = dropout_after_pool
         self.pool1 = nn.AvgPool2d((1, 4)) if pool else nn.Identity()
         self.pool2 = nn.AvgPool2d((1, 8)) if pool else nn.Identity()
@@ -52,15 +53,16 @@ class Branch(nn.Module):
         return self.bn_t(self.temporal(same_time(x, self.temporal.kernel_size[1])))
 
     def from_temporal(self, h, temporal_fusion=None, depth_fusion=None,
-                      depth_gate=None):
+                      depth_gate=None, depth_pre_activation=False):
         if temporal_fusion is not None:
             h = torch.cat((temporal_fusion, h), dim=1)
         h = self.depth(h)
+        depth_raw = h
         h = self.bn_d(h) if self.norm_then_activation else self.bn_d(F.elu(h))
         h = F.elu(h) if self.norm_then_activation else h
         if not self.dropout_after_pool:
             h = self.drop(h)
-        depth_out = h
+        depth_out = depth_raw if depth_pre_activation else h
         if depth_gate is not None:
             h = depth_gate(h)
             depth_out = h
@@ -93,7 +95,7 @@ class AMEEGNet(nn.Module):
                  dropout_after_pool=False, head_elu=True,
                  bn_eps=1e-5, bn_momentum=0.1, head_dropout=None,
                  eca_bias=False, init_mode="default", eca_stage="output",
-                 fixed_fusion_channels=False):
+                 fixed_fusion_channels=False, fusion_pre_activation=False):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")
@@ -112,10 +114,12 @@ class AMEEGNet(nn.Module):
         self.use_eca = eca
         self.eca_stage = eca_stage
         self.fixed_fusion_channels = fixed_fusion_channels
+        self.fusion_pre_activation = fusion_pre_activation
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
                          bn_first=bn_first, norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
-                         bn_eps=bn_eps, bn_momentum=bn_momentum)
+                         bn_eps=bn_eps, bn_momentum=bn_momentum,
+                         fusion_pre_activation=fusion_pre_activation)
         b2_depth_in = 12 if fusion else 8
         if fusion and fixed_fusion_channels:
             b2_depth_out = 16
@@ -132,12 +136,14 @@ class AMEEGNet(nn.Module):
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
-                         bn_eps=bn_eps, bn_momentum=bn_momentum)
+                         bn_eps=bn_eps, bn_momentum=bn_momentum,
+                         fusion_pre_activation=fusion_pre_activation)
         self.b3 = Branch(channels, 16, 64, depth_in=16, sep_in=b3_sep_in,
                          pool=pool, dropout=dropout, bn_first=bn_first,
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
-                         bn_eps=bn_eps, bn_momentum=bn_momentum)
+                         bn_eps=bn_eps, bn_momentum=bn_momentum,
+                         fusion_pre_activation=fusion_pre_activation)
         if eca_stage == "output":
             eca_channels = [8, 16, 32]
         else:
@@ -182,17 +188,26 @@ class AMEEGNet(nn.Module):
         t2 = self.b2.temporal_out(x)
         t3 = self.b3.temporal_out(x)
         if self.use_eca and self.eca_stage == "depth_pre_sep":
-            h1, _ = self.b1.from_temporal(t1, depth_gate=self.attn[0])
+            h1, _ = self.b1.from_temporal(
+                t1, depth_gate=self.attn[0],
+                depth_pre_activation=self.fusion_pre_activation)
             h2, d2 = self.b2.from_temporal(
                 t2, temporal_fusion=t1 if self.fusion else None,
-                depth_gate=self.attn[1])
+                depth_gate=self.attn[1],
+                depth_pre_activation=self.fusion_pre_activation)
             h3, _ = self.b3.from_temporal(
                 t3, depth_fusion=d2 if self.fusion else None,
-                depth_gate=self.attn[2])
+                depth_gate=self.attn[2],
+                depth_pre_activation=self.fusion_pre_activation)
             return [h1, h2, h3]
-        h1, _ = self.b1.from_temporal(t1)
-        h2, d2 = self.b2.from_temporal(t2, temporal_fusion=t1 if self.fusion else None)
-        h3, _ = self.b3.from_temporal(t3, depth_fusion=d2 if self.fusion else None)
+        h1, _ = self.b1.from_temporal(
+            t1, depth_pre_activation=self.fusion_pre_activation)
+        h2, d2 = self.b2.from_temporal(
+            t2, temporal_fusion=t1 if self.fusion else None,
+            depth_pre_activation=self.fusion_pre_activation)
+        h3, _ = self.b3.from_temporal(
+            t3, depth_fusion=d2 if self.fusion else None,
+            depth_pre_activation=self.fusion_pre_activation)
         out = [h1, h2, h3]
         return [a(o) for a, o in zip(self.attn, out)] if self.use_eca else out
 

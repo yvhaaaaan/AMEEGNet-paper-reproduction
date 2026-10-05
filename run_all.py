@@ -33,6 +33,7 @@ def main():
     p.add_argument("--eca-stage", choices=("output", "depth_pre_sep"),
                    default="output")
     p.add_argument("--fixed-fusion-channels", action="store_true")
+    p.add_argument("--fusion-pre-activation", action="store_true")
     p.add_argument("--init-mode", choices=("default", "xavier_uniform",
                                              "xavier_normal", "kaiming_normal"),
                    default="default")
@@ -95,6 +96,8 @@ def main():
             cmd.extend(["--eca-stage", a.eca_stage])
         if a.fixed_fusion_channels:
             cmd.append("--fixed-fusion-channels")
+        if a.fusion_pre_activation:
+            cmd.append("--fusion-pre-activation")
         if a.init_mode != "default":
             cmd.extend(["--init-mode", a.init_mode])
         cmd.extend(["--bn-eps", str(a.bn_eps), "--bn-momentum", str(a.bn_momentum),

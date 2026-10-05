@@ -1,5 +1,13 @@
 # Changelog
 
+# v1.0.41 - 2026-10-05
+
+- Added an isolated `depth_pre_sep` ECA placement audit for the paper's
+  wording that describes attention after the depthwise layer. The default
+  remains ECA on the completed branch outputs.
+- The alternative is recorded as a structural ambiguity check, not as a new
+  method or a promoted result.
+
 # v1.0.40 - 2026-10-05
 
 - Added explicit batch-size and weight-initialization switches for isolated

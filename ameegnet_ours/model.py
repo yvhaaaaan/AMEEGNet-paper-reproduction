@@ -46,7 +46,8 @@ class Branch(nn.Module):
     def temporal_out(self, x):
         return self.bn_t(self.temporal(same_time(x, self.temporal.kernel_size[1])))
 
-    def from_temporal(self, h, temporal_fusion=None, depth_fusion=None):
+    def from_temporal(self, h, temporal_fusion=None, depth_fusion=None,
+                      depth_gate=None):
         if temporal_fusion is not None:
             h = torch.cat((temporal_fusion, h), dim=1)
         h = self.depth(h)
@@ -55,6 +56,9 @@ class Branch(nn.Module):
         if not self.dropout_after_pool:
             h = self.drop(h)
         depth_out = h
+        if depth_gate is not None:
+            h = depth_gate(h)
+            depth_out = h
         if depth_fusion is not None:
             h = torch.cat((depth_fusion, h), dim=1)
         h = self.pool1(h)
@@ -71,8 +75,10 @@ class Branch(nn.Module):
             h = self.drop(h)
         return h, depth_out
 
-    def forward(self, x, temporal_fusion=None, depth_fusion=None):
-        return self.from_temporal(self.temporal_out(x), temporal_fusion, depth_fusion)
+    def forward(self, x, temporal_fusion=None, depth_fusion=None,
+                depth_gate=None):
+        return self.from_temporal(self.temporal_out(x), temporal_fusion,
+                                  depth_fusion, depth_gate)
 
 
 class AMEEGNet(nn.Module):
@@ -81,7 +87,7 @@ class AMEEGNet(nn.Module):
                  bn_first=True, norm_then_activation=True,
                  dropout_after_pool=False, head_elu=True,
                  bn_eps=1e-5, bn_momentum=0.1, head_dropout=None,
-                 eca_bias=False, init_mode="default"):
+                 eca_bias=False, init_mode="default", eca_stage="output"):
         super().__init__()
         if not math.isfinite(bn_eps) or bn_eps <= 0:
             raise ValueError("bn_eps must be finite and positive")
@@ -94,8 +100,11 @@ class AMEEGNet(nn.Module):
         if init_mode not in ("default", "xavier_uniform", "xavier_normal",
                              "kaiming_normal"):
             raise ValueError(f"unsupported init_mode: {init_mode}")
+        if eca_stage not in ("output", "depth_pre_sep"):
+            raise ValueError(f"unsupported eca_stage: {eca_stage}")
         self.fusion = fusion
         self.use_eca = eca
+        self.eca_stage = eca_stage
         self.b1 = Branch(channels, 4, 16, pool=pool, dropout=dropout,
                          bn_first=bn_first, norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
@@ -113,8 +122,13 @@ class AMEEGNet(nn.Module):
                          norm_then_activation=norm_then_activation,
                          dropout_after_pool=dropout_after_pool,
                          bn_eps=bn_eps, bn_momentum=bn_momentum)
-        self.attn = nn.ModuleList([ECA(8, bias=eca_bias), ECA(16, bias=eca_bias),
-                                   ECA(32, bias=eca_bias)])
+        if eca_stage == "output":
+            eca_channels = [8, 16, 32]
+        else:
+            eca_channels = [self.b1.depth.out_channels,
+                            self.b2.depth.out_channels,
+                            self.b3.depth.out_channels]
+        self.attn = nn.ModuleList([ECA(c, bias=eca_bias) for c in eca_channels])
         # All branches preserve time in their convolutions.  Pooling therefore
         # changes 1125 to floor((floor((1125-4)/4+1)-8)/8+1)=35.
         # Infer the head width analytically so construction does not update BN
@@ -151,6 +165,15 @@ class AMEEGNet(nn.Module):
         t1 = self.b1.temporal_out(x)
         t2 = self.b2.temporal_out(x)
         t3 = self.b3.temporal_out(x)
+        if self.use_eca and self.eca_stage == "depth_pre_sep":
+            h1, _ = self.b1.from_temporal(t1, depth_gate=self.attn[0])
+            h2, d2 = self.b2.from_temporal(
+                t2, temporal_fusion=t1 if self.fusion else None,
+                depth_gate=self.attn[1])
+            h3, _ = self.b3.from_temporal(
+                t3, depth_fusion=d2 if self.fusion else None,
+                depth_gate=self.attn[2])
+            return [h1, h2, h3]
         h1, _ = self.b1.from_temporal(t1)
         h2, d2 = self.b2.from_temporal(t2, temporal_fusion=t1 if self.fusion else None)
         h3, _ = self.b3.from_temporal(t3, depth_fusion=d2 if self.fusion else None)

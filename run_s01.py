@@ -133,6 +133,8 @@ def main():
     p.add_argument("--no-fusion", action="store_true")
     p.add_argument("--no-eca", action="store_true")
     p.add_argument("--eca-bias", action="store_true")
+    p.add_argument("--eca-stage", choices=("output", "depth_pre_sep"),
+                   default="output")
     p.add_argument("--init-mode", choices=("default", "xavier_uniform",
                                              "xavier_normal", "kaiming_normal"),
                    default="default")
@@ -199,7 +201,7 @@ def main():
         head_elu=not a.no_head_elu,
         head_dropout=head_dropout,
         bn_eps=a.bn_eps, bn_momentum=a.bn_momentum,
-        eca_bias=a.eca_bias, init_mode=a.init_mode,
+        eca_bias=a.eca_bias, init_mode=a.init_mode, eca_stage=a.eca_stage,
     ).to(device)
     initial_fingerprint = state_fingerprint(model)
     opt = (torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0)
@@ -300,6 +302,7 @@ def main():
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
         "eca_bias": a.eca_bias,
+        "eca_stage": a.eca_stage,
         "init_mode": a.init_mode,
         "norm_then_activation": not a.elu_before_bn,
         "bn_eps": a.bn_eps, "bn_momentum": a.bn_momentum,

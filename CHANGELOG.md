@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.72 - 2026-10-07
+
+- Preregistered a source-only epoch-selection refit audit. Each subject's
+  epoch is fixed from the v1.0.61 source-validation run, then the model is
+  retrained on all 288 source trials before one target-session evaluation.
+  No target score is used to choose an epoch.
+
 # v1.0.71 - 2026-10-07
 
 - Corrected the depth-ECA/pre-fusion final-run protocol: the nine-subject

@@ -42,6 +42,22 @@ class ModelDiagnosticsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 AMEEGNet(**config)
 
+    def test_fusion_pre_activation_switch_changes_sep_path(self):
+        torch.set_num_threads(1)
+        torch.manual_seed(42)
+        post = AMEEGNet(eca_stage="sep_pre_pool", fusion_pre_activation=False)
+        torch.manual_seed(42)
+        pre = AMEEGNet(eca_stage="sep_pre_pool", fusion_pre_activation=True)
+        for name, tensor in post.state_dict().items():
+            self.assertTrue(torch.equal(tensor, pre.state_dict()[name]), name)
+        inputs = torch.randn(2, 22, 1125)
+        post.eval()
+        pre.eval()
+        with torch.inference_mode():
+            post_logits = post(inputs)
+            pre_logits = pre(inputs)
+        self.assertFalse(torch.equal(post_logits, pre_logits))
+
     def test_source_bn_diagnostic_never_changes_weights(self):
         torch.set_num_threads(1)
         for mode in ("single_source_batch", "sequential_source_moments"):

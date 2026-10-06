@@ -209,13 +209,17 @@ class AMEEGNet(nn.Module):
                 depth_pre_activation=self.fusion_pre_activation)
             return [h1, h2, h3]
         if self.use_eca and self.eca_stage == "sep_pre_pool":
-            h1, _ = self.b1.from_temporal(t1, sep_gate=self.attn[0])
+            h1, _ = self.b1.from_temporal(
+                t1, sep_gate=self.attn[0],
+                depth_pre_activation=self.fusion_pre_activation)
             h2, d2 = self.b2.from_temporal(
                 t2, temporal_fusion=t1 if self.fusion else None,
-                sep_gate=self.attn[1])
+                sep_gate=self.attn[1],
+                depth_pre_activation=self.fusion_pre_activation)
             h3, _ = self.b3.from_temporal(
                 t3, depth_fusion=d2 if self.fusion else None,
-                sep_gate=self.attn[2])
+                sep_gate=self.attn[2],
+                depth_pre_activation=self.fusion_pre_activation)
             return [h1, h2, h3]
         h1, _ = self.b1.from_temporal(
             t1, depth_pre_activation=self.fusion_pre_activation)

@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.55 - 2026-10-06
+
+- Added an isolated BCI IV 2a artifact-flag filtering data audit. The default
+  loader still preserves all labeled trials for the paper's segmentation-only
+  protocol; the audit path supports variable per-session trial counts.
+
 # v1.0.54 - 2026-10-06
 
 - Forward the explicit max-norm thresholds through the nine-subject batch

@@ -57,6 +57,12 @@ JSON/NPZ/PT files per run. The old failed and seed2025 reference checkpoints,
 accuracies, and group summaries remain unchanged. The prior source diagnostic
 and its independent QA are recorded separately in the v1.0.77 audit.
 
+Final independent CPU-only QA passed without findings. It reproduced all
+four source evaluations exactly, checked identical initial values for all
+31 parameter tensors and 49 state tensors per pair (with classifier keys
+matched), and verified provenance and rejection guards. All 33 monitored
+files remained hash-identical; no training or target evaluation was performed.
+
 ## Interpretation
 
 Under these two fixed-seed failure conditions, removing the unspecified

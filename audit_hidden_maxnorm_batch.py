@@ -10,6 +10,30 @@ def close(a, b, tol=1e-12):
     return math.isclose(float(a), float(b), rel_tol=tol, abs_tol=tol)
 
 
+def comparable_config(result):
+    """Return run settings without subject-specific sample counts."""
+    config = {
+        k: result.get(k) for k in (
+            "version", "git_commit", "git_dirty", "input_scale",
+            "input_normalization", "strict", "paper_pooling", "dropout",
+            "dropout_after_pool", "head_dropout", "max_norm", "head_elu",
+            "hidden_max_norm", "fusion", "eca", "bn_first", "eca_bias",
+            "spatial_max_norm", "classifier_max_norm", "hidden_max_norm_value",
+            "init_mode", "eca_stage", "fixed_fusion_channels", "reverse_sessions",
+            "select_best_validation", "training_protocol",
+            "norm_then_activation", "bn_eps", "bn_momentum", "seed", "epochs",
+            "device", "deterministic", "test_evaluation", "checkpoint_selection",
+            "softmax_before_loss", "fusion_pre_activation", "loader_rng",
+            "conv_bias",
+        )
+    }
+    protocol = dict(config["training_protocol"] or {})
+    for key in ("fit_samples", "validation_samples", "test_samples"):
+        protocol.pop(key, None)
+    config["training_protocol"] = protocol
+    return config
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", required=True)
@@ -32,19 +56,7 @@ def main():
         if not json_path.exists() or not npz_path.exists():
             continue
         result = json.loads(json_path.read_text(encoding="utf-8"))
-        configs.append({k: result.get(k) for k in (
-            "version", "git_commit", "git_dirty", "input_scale",
-            "input_normalization", "strict", "paper_pooling", "dropout",
-            "dropout_after_pool", "head_dropout", "max_norm", "head_elu",
-            "hidden_max_norm", "fusion", "eca", "bn_first", "eca_bias",
-            "spatial_max_norm", "classifier_max_norm", "hidden_max_norm_value",
-            "init_mode", "eca_stage", "fixed_fusion_channels", "reverse_sessions",
-            "select_best_validation", "training_protocol",
-            "norm_then_activation", "bn_eps", "bn_momentum", "seed", "epochs",
-            "device", "deterministic", "test_evaluation", "checkpoint_selection",
-            "softmax_before_loss", "fusion_pre_activation", "loader_rng",
-            "conv_bias",
-        )})
+        configs.append(comparable_config(result))
         source_hashes.append(result.get("source_sha256"))
         history = result.get("history", [])
         if len(history) != 1000:
@@ -64,15 +76,26 @@ def main():
                 errors.append(f"{subject}: unexpected prediction keys {pred.files}")
             y_true = np.asarray(pred["y_true"])
             y_pred = np.asarray(pred["y_pred"])
-            test_samples = int(result["training_protocol"]["test_samples"])
+            protocol = result["training_protocol"]
+            train_samples = int(protocol["fit_samples"])
+            test_samples = int(protocol["test_samples"])
             if y_true.shape != (test_samples,) or y_pred.shape != (test_samples,):
                 errors.append(f"{subject}: prediction shape {y_true.shape}/{y_pred.shape}")
-            if (not args.allow_imbalanced_test and
-                    not np.array_equal(np.unique(y_true, return_counts=True)[1], np.array([72] * 4))):
-                errors.append(f"{subject}: target labels are not balanced")
+            if len(np.unique(y_true)) != 4:
+                errors.append(f"{subject}: target labels do not contain all four classes")
+            if not args.allow_imbalanced_test:
+                counts = np.bincount(y_true, minlength=4)
+                if not np.array_equal(counts, np.array([72] * 4)):
+                    errors.append(f"{subject}: target labels are not balanced")
             npz_acc = float(np.mean(y_true == y_pred))
             if not close(npz_acc, result["final_test_acc"]):
                 errors.append(f"{subject}: JSON/NPZ accuracy mismatch")
+            if pred["fit_indices"].shape != (train_samples,):
+                errors.append(f"{subject}: fit index count mismatch")
+            if pred["validation_indices"].size != 0:
+                errors.append(f"{subject}: unexpected validation indices")
+            if pred["validation_y_true"].size != 0 or pred["validation_y_pred"].size != 0:
+                errors.append(f"{subject}: unexpected validation predictions")
         rows.append({
             "subject": subject,
             "accuracy": float(result["final_test_acc"]),

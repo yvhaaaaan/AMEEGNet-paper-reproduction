@@ -1,5 +1,11 @@
 # v1.0.68 depth-ECA/pre-fusion audit preregistration
 
+> Historical preregistration. The completed run is invalid for this question:
+> the implementation at commit `085d0e7` overwrote the pre-activation fusion
+> tensor after applying ECA, so `fusion_pre_activation=true` did not alter the
+> `depth_pre_sep` data flow. The registered question is re-opened under
+> v1.0.69 after the implementation fix.
+
 ## Question
 
 The paper describes ECA after depthwise features and describes fusion in terms

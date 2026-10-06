@@ -1,5 +1,16 @@
 # Changelog
 
+# v1.0.69 - 2026-10-06
+
+- Fixed the `depth_pre_sep` fusion audit so `fusion_pre_activation` is not
+  overwritten after the ECA gate. The local branch continues with gated,
+  normalized features while the next fusion junction receives the registered
+  pre-activation tensor.
+- Added a regression test proving that the switch changes the depth-ECA path
+  and final logits when enabled.
+- Marked the v1.0.68 nine-subject batch invalid for the registered joint audit
+  because that switch was ineffective in the tested code.
+
 # v1.0.67 - 2026-10-06
 
 - Consolidated the controlled AMEEGNet reproduction status and updated the

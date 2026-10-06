@@ -26,10 +26,12 @@ The best controlled nine-subject final-only candidate currently retained is:
 | **Mean ± sample SD** | **78.67 ± 9.82** |
 
 Against the paper's `81.17% ± 10.43%`, the mean difference is `-2.50` percentage
-points. The primary result is reproducible and target-test leakage free, but
-the max-norm assumptions are not fully specified in the paper, so it is a
-controlled reconstruction candidate rather than proof of exact source-code
-recovery.
+points. The primary run evaluates the target session only once after training.
+However, the broader reconstruction process has used repeated target-labelled
+diagnostics to investigate unspecified choices, so this is an exploratory
+controlled reconstruction candidate, not an untouched held-out confirmation
+and not proof of exact source-code recovery. The max-norm assumptions are also
+not fully specified in the paper.
 
 ## Completed audits
 
@@ -40,6 +42,7 @@ recovery.
 | ECA bias enabled | 76.70 ± 12.37 | rejected |
 | Convolution bias enabled | 74.07 ± 20.14 | rejected |
 | Standard pooling, no dropout | 69.54 ± 13.94 source screen | rejected |
+| Depth-ECA + pre-activation fusion (v1.0.68) | 78.09 ± 10.09 | invalid: pre-activation switch was ineffective |
 
 The previously completed audits also found no improvement from alternate ECA
 placement, fusion activation source, Softmax-before-cross-entropy, global

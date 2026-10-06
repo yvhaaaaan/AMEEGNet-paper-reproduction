@@ -67,7 +67,11 @@ class Branch(nn.Module):
         depth_out = depth_raw if depth_pre_activation else h
         if depth_gate is not None:
             h = depth_gate(h)
-            depth_out = h
+            # Keep the requested pre-activation tensor for the next fusion
+            # junction; ECA gates the local branch output that continues to
+            # the separable convolution.
+            if not depth_pre_activation:
+                depth_out = h
         if depth_fusion is not None:
             h = torch.cat((depth_fusion, h), dim=1)
         h = self.pool1(h)

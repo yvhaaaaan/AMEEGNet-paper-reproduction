@@ -24,3 +24,9 @@ Report all nine source-validation cells and the per-seed means. Do not select
 a seed using target labels. A follow-up full target evaluation is allowed only
 as a fixed seed-sensitivity analysis if the pre-registered source screen is
 completed without changing the configuration.
+
+Post-run interpretation clarification (v1.0.76; no seed set or decision rule
+changed): this source screen varies the validation partition as well as
+initialization and batch order because `random_state=seed`. It does not
+isolate initialization sensitivity. The full-source v1.0.75 batch has no
+validation split.

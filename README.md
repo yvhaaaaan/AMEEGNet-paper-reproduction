@@ -21,3 +21,15 @@ excluded from Git; their summaries and audit notes are tracked.
 
 Current version: see `VERSION`. The `--paper-pooling` flag names an exploratory
 pooling/dropout hypothesis, not a verified setting from the original paper.
+
+## Reproduction Status
+
+The retained exploratory nine-subject final-epoch candidate is
+`78.6651% +/- 9.8180%` (sample SD), below the paper's `81.17%` mean by
+`2.5049` percentage points. This is not exact recovery of the author's code:
+several implementation choices are unspecified, max-norm is an assumption,
+and the broader reconstruction history includes repeated target-labelled
+diagnostics. Do not select a test-best epoch or omit low seed results.
+
+See [the current audit](results/v1_0_76_reproduction_status_20261007.md) and
+[the seed sensitivity report](results/v1_0_75_seed_sensitivity_audit_20261007.md).

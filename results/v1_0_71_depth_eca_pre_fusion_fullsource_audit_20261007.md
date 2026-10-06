@@ -27,7 +27,7 @@ Compared with the paper's `81.17% +/- 10.43%`, the mean difference is
 
 The batch auditor reported no errors. All nine subjects have 288 source-fit
 trials, 288 target-test trials, 1000 recorded epochs, exactly one final target
-evaluation, balanced four-class predictions, matching configuration fields,
+evaluation, balanced four-class target labels, matching configuration fields,
 and identical source hashes at commit `e058461`.
 
 ## Decision

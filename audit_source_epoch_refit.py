@@ -27,7 +27,7 @@ def comparable(result):
         "select_best_validation", "norm_then_activation", "bn_eps",
         "bn_momentum", "seed", "device", "deterministic", "test_evaluation",
         "checkpoint_selection", "softmax_before_loss", "fusion_pre_activation",
-        "loader_rng", "conv_bias",
+        "loader_rng", "conv_bias", "validation_fraction",
     )
     values = {key: result.get(key) for key in keys}
     protocol = dict(result["training_protocol"])
@@ -65,6 +65,10 @@ def main():
             errors.append(f"{subject}: epochs={result.get('epochs')}")
         if len(history) != expected_epochs:
             errors.append(f"{subject}: history length {len(history)}")
+        if [item.get("epoch") for item in history] != list(range(1, expected_epochs + 1)):
+            errors.append(f"{subject}: epoch sequence mismatch")
+        if any(not math.isfinite(float(item["train_loss"])) for item in history):
+            errors.append(f"{subject}: non-finite training loss")
         if any(item.get("test_acc") is not None for item in history):
             errors.append(f"{subject}: target evaluated during training")
         if result.get("test_evaluations") != 1:
@@ -72,6 +76,8 @@ def main():
         protocol = result["training_protocol"]
         if protocol.get("fit_samples") != 288 or protocol.get("validation_samples") is not None:
             errors.append(f"{subject}: not a full-source fit")
+        if result.get("validation_fraction") is not None:
+            errors.append(f"{subject}: unexpected source split")
         with np.load(npz_path, allow_pickle=False) as pred:
             y_true = np.asarray(pred["y_true"])
             y_pred = np.asarray(pred["y_pred"])
@@ -81,6 +87,13 @@ def main():
                 errors.append(f"{subject}: target labels are not balanced")
             if not close(np.mean(y_true == y_pred), result["final_test_acc"]):
                 errors.append(f"{subject}: JSON/NPZ accuracy mismatch")
+            if not np.isin(y_pred, np.arange(4)).all():
+                errors.append(f"{subject}: target predictions outside class range")
+            if not np.array_equal(np.sort(pred["fit_indices"]), np.arange(288)):
+                errors.append(f"{subject}: fit indices do not cover full source data")
+            for key in ("validation_indices", "validation_y_true", "validation_y_pred"):
+                if pred[key].size:
+                    errors.append(f"{subject}: unexpected {key}")
         rows.append({
             "subject": subject,
             "epochs": expected_epochs,

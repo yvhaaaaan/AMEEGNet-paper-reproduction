@@ -1,5 +1,16 @@
 # Changelog
 
+# v1.0.76 - 2026-10-07
+
+- Archived the complete three-seed, nine-subject sensitivity analysis; all
+  27 runs remain included, including two single-class collapses.
+- Strengthened audit guards for full-source fit counts, index coverage,
+  validation-split equality, and epoch sequences; added regression tests.
+- Added a no-overwrite seed summary tool with separate subject and seed
+  statistics, without treating repeated seeds as independent subjects.
+- Qualified historical target exposure and one-sided raw b2 transfer in
+  reproduction documentation. No model or training code changed here.
+
 # v1.0.75 - 2026-10-07
 
 - Preregistered the fixed three-seed full-source sensitivity batch after the

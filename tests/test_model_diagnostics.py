@@ -6,6 +6,7 @@ import numpy as np
 from torch import nn
 
 from ameegnet_ours import AMEEGNet
+from ameegnet_ours.model import Branch
 from run_s01 import normalize_trials
 from audit_source_bn import recalibrate
 
@@ -23,6 +24,7 @@ class ModelDiagnosticsTests(unittest.TestCase):
     def test_architecture_audit_shapes_and_gradients(self):
         torch.set_num_threads(1)
         settings = ({"eca_stage": "depth_pre_sep"},
+                    {"eca_stage": "depth_pre_sep", "fusion_pre_activation": True},
                     {"eca_stage": "sep_pre_pool"},
                     {"conv_bias": True},
                     {"fixed_fusion_channels": True},
@@ -73,6 +75,53 @@ class ModelDiagnosticsTests(unittest.TestCase):
             post_logits = post(inputs)
             pre_logits = pre(inputs)
         self.assertFalse(torch.equal(post_logits, pre_logits))
+
+    def test_raw_fusion_return_does_not_disable_local_eca(self):
+        torch.set_num_threads(1)
+        torch.manual_seed(42)
+        branch = Branch(22, 4, 16, dropout=0).eval()
+        temporal = torch.randn(2, 4, 22, 1125)
+        gate = lambda x: x * 0.5
+        with torch.inference_mode():
+            raw = branch.depth(temporal)
+            local_pre, transfer_pre = branch.from_temporal(
+                temporal, depth_gate=gate, depth_pre_activation=True)
+            local_post, transfer_post = branch.from_temporal(
+                temporal, depth_gate=gate, depth_pre_activation=False)
+            expected_post = gate(nn.functional.elu(branch.bn_d(raw)))
+        self.assertTrue(torch.equal(transfer_pre, raw))
+        self.assertTrue(torch.equal(transfer_post, expected_post))
+        self.assertTrue(torch.equal(local_pre, local_post))
+
+    def test_raw_transfer_joins_gated_local_b3_features(self):
+        torch.set_num_threads(1)
+        torch.manual_seed(42)
+        model = AMEEGNet(pool=False, dropout=0, bn_first=False,
+                         eca_stage="depth_pre_sep", fusion_pre_activation=True).eval()
+        captured = {}
+
+        def output_hook(name):
+            def capture(module, inputs, output):
+                captured[name] = output.detach().clone()
+            return capture
+
+        def input_hook(module, inputs):
+            captured["b3_fused"] = inputs[0].detach().clone()
+
+        handles = [
+            model.b2.depth.register_forward_hook(output_hook("b2_raw")),
+            model.attn[2].register_forward_hook(output_hook("b3_gated")),
+            model.b3.pool1.register_forward_pre_hook(input_hook),
+        ]
+        try:
+            with torch.inference_mode():
+                model(torch.randn(2, 22, 1125))
+        finally:
+            for handle in handles:
+                handle.remove()
+        expected = torch.cat((captured["b2_raw"], captured["b3_gated"]), dim=1)
+        self.assertEqual(tuple(expected.shape), (2, 56, 1, 1125))
+        self.assertTrue(torch.equal(captured["b3_fused"], expected))
 
     def test_source_bn_diagnostic_never_changes_weights(self):
         torch.set_num_threads(1)

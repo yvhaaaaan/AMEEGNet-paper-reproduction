@@ -24,7 +24,7 @@ def comparable_config(result):
             "norm_then_activation", "bn_eps", "bn_momentum", "seed", "epochs",
             "device", "deterministic", "test_evaluation", "checkpoint_selection",
             "softmax_before_loss", "fusion_pre_activation", "loader_rng",
-            "conv_bias",
+            "conv_bias", "validation_fraction",
         )
     }
     protocol = dict(config["training_protocol"] or {})
@@ -39,6 +39,8 @@ def main():
     parser.add_argument("--results", required=True)
     parser.add_argument("--subjects", nargs="+", default=[f"A{i:02d}" for i in range(1, 10)])
     parser.add_argument("--allow-imbalanced-test", action="store_true")
+    parser.add_argument("--expected-fit-samples", type=int, default=None,
+                        help="required source-fit count for the registered protocol")
     args = parser.parse_args()
     root = Path(args.results)
     rows = []
@@ -61,6 +63,8 @@ def main():
         history = result.get("history", [])
         if len(history) != 1000:
             errors.append(f"{subject}: history length {len(history)}")
+        if [h.get("epoch") for h in history] != list(range(1, 1001)):
+            errors.append(f"{subject}: history epoch sequence is incomplete or duplicated")
         if any(not math.isfinite(float(h["train_loss"])) for h in history):
             errors.append(f"{subject}: non-finite training loss")
         if any(h.get("test_acc") is not None for h in history):
@@ -78,10 +82,14 @@ def main():
             protocol = result["training_protocol"]
             train_samples = int(protocol["fit_samples"])
             test_samples = int(protocol["test_samples"])
+            if args.expected_fit_samples is not None and train_samples != args.expected_fit_samples:
+                errors.append(f"{subject}: fit_samples={train_samples}, expected {args.expected_fit_samples}")
             if y_true.shape != (test_samples,) or y_pred.shape != (test_samples,):
                 errors.append(f"{subject}: prediction shape {y_true.shape}/{y_pred.shape}")
             if len(np.unique(y_true)) != 4:
                 errors.append(f"{subject}: target labels do not contain all four classes")
+            if not np.isin(y_pred, np.arange(4)).all():
+                errors.append(f"{subject}: target predictions outside class range")
             if not args.allow_imbalanced_test:
                 counts = np.bincount(y_true, minlength=4)
                 if not np.array_equal(counts, np.array([72] * 4)):
@@ -115,6 +123,8 @@ def main():
                     if not close(val_acc, result.get("final_val_acc")):
                         errors.append(f"{subject}: JSON/NPZ validation accuracy mismatch")
             else:
+                if not np.array_equal(np.sort(fit_indices), np.arange(train_samples)):
+                    errors.append(f"{subject}: fit indices do not cover full source data")
                 if validation_indices.size != 0:
                     errors.append(f"{subject}: unexpected validation indices")
                 if validation_y_true.size != 0 or validation_y_pred.size != 0:

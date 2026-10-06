@@ -22,7 +22,10 @@ def main():
     p.add_argument("--dropout-after-pool", action="store_true")
     p.add_argument("--no-head-dropout", action="store_true")
     p.add_argument("--max-norm", action="store_true")
+    p.add_argument("--spatial-max-norm", type=float, default=1.0)
+    p.add_argument("--classifier-max-norm", type=float, default=0.25)
     p.add_argument("--hidden-max-norm", action="store_true")
+    p.add_argument("--hidden-max-norm-value", type=float, default=0.25)
     p.add_argument("--no-bn-first", action="store_true")
     p.add_argument("--elu-before-bn", action="store_true")
     p.add_argument("--no-head-elu", action="store_true")
@@ -78,6 +81,9 @@ def main():
             cmd.append("--no-head-dropout")
         if a.max_norm:
             cmd.append("--max-norm")
+        cmd.extend(["--spatial-max-norm", str(a.spatial_max_norm),
+                    "--classifier-max-norm", str(a.classifier_max_norm),
+                    "--hidden-max-norm-value", str(a.hidden_max_norm_value)])
         if a.hidden_max_norm:
             cmd.append("--hidden-max-norm")
         if a.no_bn_first:

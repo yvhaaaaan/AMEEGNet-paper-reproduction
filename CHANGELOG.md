@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.54 - 2026-10-06
+
+- Forward the explicit max-norm thresholds through the nine-subject batch
+  runner so batch artifacts cannot silently fall back to defaults.
+
 # v1.0.53 - 2026-10-06
 
 - Exposed the spatial, classifier, and hidden Dense(32) max-norm thresholds

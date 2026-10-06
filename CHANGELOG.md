@@ -1,5 +1,13 @@
 # Changelog
 
+# v1.0.67 - 2026-10-06
+
+- Consolidated the controlled AMEEGNet reproduction status and updated the
+  reconstruction matrix after the reverse-session, checkpoint, bias, and
+  pooling audits.
+- Kept `78.6651% +/- 9.8180%` as the primary final-only candidate; no
+  exploratory variant is promoted to the paper result.
+
 # v1.0.56 - 2026-10-06
 
 - Added a data-directory switch to the batch runner and an explicit auditor

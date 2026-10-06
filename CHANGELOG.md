@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.74 - 2026-10-07
+
+- Preregistered a source-only seed sensitivity screen for the retained
+  configuration. The seed set is fixed at `1`, `7`, and `2025`; target labels
+  are not used for seed selection.
+
 # v1.0.73 - 2026-10-07
 
 - Added a dedicated auditor for the v1.0.72 source-epoch refit, where the

@@ -21,6 +21,17 @@ class ModelDiagnosticsTests(unittest.TestCase):
         for name, tensor in implicit.state_dict().items():
             self.assertTrue(torch.equal(tensor, explicit.state_dict()[name]), name)
 
+    def test_hidden_elu_removal_preserves_initial_parameter_values(self):
+        torch.manual_seed(42)
+        with_elu = AMEEGNet(head_elu=True)
+        torch.manual_seed(42)
+        without_elu = AMEEGNet(head_elu=False)
+        first = list(with_elu.parameters())
+        second = list(without_elu.parameters())
+        self.assertEqual(len(first), len(second))
+        for left, right in zip(first, second):
+            self.assertTrue(torch.equal(left, right))
+
     def test_architecture_audit_shapes_and_gradients(self):
         torch.set_num_threads(1)
         settings = ({"eca_stage": "depth_pre_sep"},

@@ -1,5 +1,15 @@
 # Changelog
 
+# v1.0.78 - 2026-10-07
+
+- Archived read-only source diagnostics identifying complete hidden ELU
+  saturation and near-constant logits in two retained collapsed checkpoints.
+- Preregistered four source-only fixed-seed runs removing only the
+  unspecified hidden ELU; target labels are not evaluated or used to promote
+  a result. Existing nine-subject results remain unchanged.
+- Added a test confirming the activation switch preserves initial parameter
+  values at a fixed seed despite changing final-layer module indices.
+
 # v1.0.77 - 2026-10-07
 
 - Added a source-only frozen checkpoint diagnostic for the two retained

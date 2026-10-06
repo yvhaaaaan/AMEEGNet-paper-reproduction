@@ -1,12 +1,14 @@
 import unittest
+import tempfile
+from pathlib import Path
 
 import numpy as np
 import torch
 
 from ameegnet_ours import AMEEGNet
 from audit_source_bn import construct
-from audit_training_collapse import activation_stats, inspect_source
-from run_s01 import state_fingerprint
+from audit_training_collapse import activation_stats, audit_checkpoint, inspect_source
+from run_s01 import file_sha256, state_fingerprint
 
 
 class CollapseDiagnosticTests(unittest.TestCase):
@@ -46,6 +48,44 @@ class CollapseDiagnosticTests(unittest.TestCase):
         self.assertTrue(restored.fusion_pre_activation)
         self.assertTrue(all(branch.temporal.bias is not None
                             for branch in (restored.b1, restored.b2, restored.b3)))
+
+    def test_mutated_buffer_is_rejected(self):
+        torch.set_num_threads(1)
+        model = AMEEGNet(pool=True)
+
+        def mutate(module, args, output):
+            model.b1.bn_d.running_mean.add_(1)
+
+        handle = model.register_forward_hook(mutate)
+        try:
+            with self.assertRaisesRegex(AssertionError, "changed model"):
+                inspect_source(model, np.zeros((2, 22, 1125), dtype=np.float32),
+                               np.array([0, 1], dtype=np.int64))
+        finally:
+            handle.remove()
+
+    def test_mismatched_data_or_source_hash_is_rejected(self):
+        repository = Path(__file__).resolve().parents[1]
+        hashes = {name: file_sha256(repository / name) for name in (
+            "run_s01.py", "ameegnet_ours/model.py", "ameegnet_ours/data.py",
+        )}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = root / "data.npz"
+            data.write_bytes(b"not loaded because the hash guard rejects it")
+            checkpoint = root / "checkpoint.pt"
+            config = {
+                "strict": True, "reverse_sessions": False,
+                "validation_fraction": None, "data_path": str(data),
+                "data_sha256": "incorrect", "source_sha256": hashes,
+            }
+            torch.save({"result": config}, checkpoint)
+            with self.assertRaisesRegex(AssertionError, "data hash differs"):
+                audit_checkpoint(checkpoint, 32)
+            config["source_sha256"] = dict(hashes, **{"run_s01.py": "incorrect"})
+            torch.save({"result": config}, checkpoint)
+            with self.assertRaisesRegex(AssertionError, "training source hash differs"):
+                audit_checkpoint(checkpoint, 32)
 
 
 if __name__ == "__main__":

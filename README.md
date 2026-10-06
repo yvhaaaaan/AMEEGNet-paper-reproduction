@@ -1,6 +1,6 @@
 # AMEEGNet ours
 
-独立实现 AMEEGNet 及跨 Session 训练实验。`--strict` 使用论文文字协议；默认配置使用训练集拟合的 Session 标准化、分支池化、轻度 dropout、AdamW、标签平滑、梯度裁剪和训练集内部验证集。
+独立实现 AMEEGNet 及跨 Session 训练实验。`--strict` 固定论文明确给出的部分训练设置，但不代表未披露的结构和参数已得到原作者确认；默认配置使用训练集拟合的 Session 标准化、分支池化、轻度 dropout、AdamW、标签平滑、梯度裁剪和训练集内部验证集。
 
 训练脚本默认只在训练结束计算一次目标 Session 测试准确率；`--test-evaluation each-epoch` 仅用于明确标注的诊断实验，不能用于选择结构、参数或 epoch。`--test-evaluation none` 可在完全不查看目标 Session 的情况下训练。非 strict 模式按训练 Session 内部验证集选择权重；strict 模式报告最终 epoch。`--deterministic` 会记录 CUDA/PyTorch 确定性设置，并保存代码 commit、数据 SHA-256、运行环境和权重指纹。
 

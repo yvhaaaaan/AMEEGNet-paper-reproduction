@@ -1,5 +1,14 @@
 # Changelog
 
+# v1.0.79 - 2026-10-07
+
+- Strengthened frozen diagnostic provenance with enforced training-source
+  hashes, diagnostic code/commit hashes, and the inference batch size.
+- Added rejection tests for mutated buffers and mismatched data/source hashes.
+- The four registered v1.0.78 source-only GPU runs completed; all final
+  online training accuracies remain 100%, with zero target evaluations.
+- Clarified that strict mode alone does not prove exact author-code recovery.
+
 # v1.0.78 - 2026-10-07
 
 - Archived read-only source diagnostics identifying complete hidden ELU

@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 from audit_source_bn import construct
-from run_s01 import file_sha256, normalize_trials, state_fingerprint
+from run_s01 import file_sha256, git_metadata, normalize_trials, state_fingerprint
 
 
 def activation_stats(values):
@@ -57,7 +57,7 @@ def inspect_source(model, inputs, labels, batch_size=32):
     prediction = logits.argmax(dim=1)
     return {
         "source_samples": len(labels),
-        "source_accuracy": float((prediction == target).float().mean()),
+        "source_accuracy": float((prediction == target).double().mean()),
         "source_loss": float(nn.functional.cross_entropy(logits, target)),
         "source_prediction_counts": torch.bincount(prediction, minlength=4).tolist(),
         "source_true_counts": torch.bincount(target, minlength=4).tolist(),
@@ -87,6 +87,14 @@ def audit_checkpoint(checkpoint, batch_size):
         raise ValueError("diagnosis expects the strict T -> E configuration")
     if config.get("validation_fraction") is not None:
         raise ValueError("use a full-source checkpoint, not an internal split")
+    repository = Path(__file__).resolve().parent
+    expected_sources = {"run_s01.py", "ameegnet_ours/model.py", "ameegnet_ours/data.py"}
+    recorded_sources = config.get("source_sha256", {})
+    if set(recorded_sources) != expected_sources:
+        raise ValueError("missing or unexpected training source hashes")
+    for name, expected in recorded_sources.items():
+        if file_sha256(repository / name) != expected:
+            raise AssertionError(f"training source hash differs: {name}")
     data_path = Path(config["data_path"])
     if file_sha256(data_path) != config["data_sha256"]:
         raise AssertionError("data hash differs from the training input")
@@ -112,6 +120,7 @@ def audit_checkpoint(checkpoint, batch_size):
     return {
         "checkpoint": str(checkpoint.resolve()), "checkpoint_sha256": digest,
         "data_sha256": config["data_sha256"], "seed": config["seed"],
+        "training_source_sha256": recorded_sources, "head_elu": config["head_elu"],
         "training_commit": config["git_commit"],
         "last_online_training_record": config["history"][-1],
         **diagnostic,
@@ -129,10 +138,17 @@ def main():
     if args.batch_size <= 0:
         raise ValueError("batch size must be positive")
     torch.set_num_threads(1)
+    commit, dirty = git_metadata()
+    repository = Path(__file__).resolve().parent
     report = {
         "scope": "source_only_frozen_checkpoint_diagnostic_not_a_paper_result",
         "device": "cpu", "target_evaluations": 0, "parameter_updates": 0,
-        "bn_recalibration": False,
+        "bn_recalibration": False, "batch_size": args.batch_size,
+        "diagnostic_git_commit": commit, "diagnostic_git_dirty": dirty,
+        "diagnostic_source_sha256": {name: file_sha256(repository / name) for name in (
+            "audit_training_collapse.py", "audit_source_bn.py", "run_s01.py",
+            "ameegnet_ours/model.py", "ameegnet_ours/data.py",
+        )},
         "rows": [audit_checkpoint(path, args.batch_size) for path in args.checkpoint],
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)

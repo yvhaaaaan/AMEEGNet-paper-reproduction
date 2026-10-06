@@ -1,5 +1,11 @@
 # Changelog
 
+# v1.0.75 - 2026-10-07
+
+- Preregistered the fixed three-seed full-source sensitivity batch after the
+  source-only gate completed. All seed/subject cells will be reported; no
+  target-selected seed will be promoted.
+
 # v1.0.74 - 2026-10-07
 
 - Preregistered a source-only seed sensitivity screen for the retained

@@ -15,7 +15,16 @@ screen was completed before the nine-subject run:
 This exceeded the preregistered 72.99% reference, so the nine-subject
 final-only run was allowed.
 
-## Nine-subject final-only result
+## Protocol correction
+
+The first nine-subject command accidentally retained
+`--validation-fraction 0.2` from the source-only screening command. It
+therefore fitted only 230 of the 288 source-session trials for each subject.
+Because the retained primary candidate fits all 288 source trials, that batch
+is not protocol-comparable and must not be used to reject this structural
+factor. Its artifacts and audit output remain preserved.
+
+## Exploratory nine-subject split-fit result
 
 Configuration: BCI IV 2a Session 1 -> Session 2, `[1.5, 6]` s, no pooling,
 no dropout, no temporal BN, fusion enabled, `eca_stage=depth_pre_sep`,
@@ -37,16 +46,17 @@ pre-activation depth output at the fusion junction, Adam `0.001`, batch size
 | **Mean +/- sample SD** | **73.92% +/- 12.56%** |
 
 Compared with the paper's `81.17% +/- 10.43%`, the mean difference is
-`-7.25` percentage points. Runtime was 2475.79 s total, 275.09 s mean, and
-268.48 s median per subject.
+`-7.25` percentage points. This comparison is descriptive only because the
+run used 230 source-fit trials. Runtime was 2475.79 s total, 275.09 s mean,
+and 268.48 s median per subject.
 
 ## Audit result
 
 The batch auditor reported no errors: all nine subjects had 230 source-fit
 trials, 288 target-test trials, matching configuration fields, complete
 prediction artifacts, and the same source code commit `35658fc`. The source
-screen therefore passed its registered gate, but the final cross-session
-result did not improve the retained candidate and is rejected for promotion.
+screen passed its registered gate. A protocol-correct full-source final run is
+required before accepting or rejecting the factor.
 
 This result does not support changing the network again based on the target
 scores. The retained best controlled candidate remains `78.67% +/- 9.82%`

@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.71 - 2026-10-07
+
+- Corrected the depth-ECA/pre-fusion final-run protocol: the nine-subject
+  confirmation must fit all 288 source-session trials after the source-only
+  screening gate. The prior v1.0.70 batch retained the 80/20 diagnostic split
+  and is therefore exploratory rather than a rejection of the factor.
+
 # v1.0.70 - 2026-10-06
 
 - Preregistered the corrected depth-ECA plus pre-activation-fusion source-only

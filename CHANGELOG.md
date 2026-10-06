@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.73 - 2026-10-07
+
+- Added a dedicated auditor for the v1.0.72 source-epoch refit, where the
+  epoch count is intentionally subject-specific but preregistered.
+
 # v1.0.72 - 2026-10-07
 
 - Preregistered a source-only epoch-selection refit audit. Each subject's

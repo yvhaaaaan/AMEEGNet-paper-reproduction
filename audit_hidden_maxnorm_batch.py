@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", required=True)
     parser.add_argument("--subjects", nargs="+", default=[f"A{i:02d}" for i in range(1, 10)])
+    parser.add_argument("--allow-imbalanced-test", action="store_true")
     args = parser.parse_args()
     root = Path(args.results)
     rows = []
@@ -63,9 +64,11 @@ def main():
                 errors.append(f"{subject}: unexpected prediction keys {pred.files}")
             y_true = np.asarray(pred["y_true"])
             y_pred = np.asarray(pred["y_pred"])
-            if y_true.shape != (288,) or y_pred.shape != (288,):
+            test_samples = int(result["training_protocol"]["test_samples"])
+            if y_true.shape != (test_samples,) or y_pred.shape != (test_samples,):
                 errors.append(f"{subject}: prediction shape {y_true.shape}/{y_pred.shape}")
-            if not np.array_equal(np.unique(y_true, return_counts=True)[1], np.array([72] * 4)):
+            if (not args.allow_imbalanced_test and
+                    not np.array_equal(np.unique(y_true, return_counts=True)[1], np.array([72] * 4))):
                 errors.append(f"{subject}: target labels are not balanced")
             npz_acc = float(np.mean(y_true == y_pred))
             if not close(npz_acc, result["final_test_acc"]):

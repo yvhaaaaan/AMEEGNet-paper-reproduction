@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.56 - 2026-10-06
+
+- Added a data-directory switch to the batch runner and an explicit auditor
+  mode for variable, imbalanced test-session trial counts.
+
 # v1.0.55 - 2026-10-06
 
 - Added an isolated BCI IV 2a artifact-flag filtering data audit. The default

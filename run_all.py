@@ -47,6 +47,7 @@ def main():
     p.add_argument("--checkpoint-every", type=int, default=0)
     p.add_argument("--loader-rng", choices=("isolated", "global"), default="isolated")
     p.add_argument("--out", default="results/all_500")
+    p.add_argument("--data-dir", default="data")
     a = p.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -54,7 +55,7 @@ def main():
     for i in range(1, 10):
         sid = f"A{i:02d}"
         path = out / f"{sid}.json"
-        cmd = [sys.executable, "run_s01.py", "--data", f"data/{sid}.npz",
+        cmd = [sys.executable, "run_s01.py", "--data", str(Path(a.data_dir) / f"{sid}.npz"),
                "--epochs", str(a.epochs), "--seed", str(a.seed),
                "--batch-size", str(a.batch_size),
                "--device", a.device, "--input-scale", str(a.input_scale),

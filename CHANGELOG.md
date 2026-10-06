@@ -1,5 +1,14 @@
 # Changelog
 
+# v1.0.77 - 2026-10-07
+
+- Added a source-only frozen checkpoint diagnostic for the two retained
+  single-class collapses, with activation statistics and state/hash guards.
+- Fixed checkpoint reconstruction in the BN audit to forward the saved
+  convolution-bias and pre-activation-transfer settings.
+- Added tests for immutable diagnosis and exact constructor settings;
+  no training model or optimizer changes are included.
+
 # v1.0.76 - 2026-10-07
 
 - Archived the complete three-seed, nine-subject sensitivity analysis; all

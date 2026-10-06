@@ -27,6 +27,8 @@ def construct(config):
         init_mode=config.get("init_mode", "default"),
         eca_stage=config.get("eca_stage", "output"),
         fixed_fusion_channels=config.get("fixed_fusion_channels", False),
+        fusion_pre_activation=config.get("fusion_pre_activation", False),
+        conv_bias=config.get("conv_bias", False),
     )
 
 

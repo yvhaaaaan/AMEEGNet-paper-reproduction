@@ -67,8 +67,7 @@ def main():
             errors.append(f"{subject}: target test evaluated during training")
         if result.get("test_evaluations") != 1:
             errors.append(f"{subject}: test_evaluations={result.get('test_evaluations')}")
-        if result.get("validation_fraction") is not None:
-            errors.append(f"{subject}: unexpected validation split")
+        has_validation = result.get("validation_fraction") is not None
         with np.load(npz_path, allow_pickle=False) as pred:
             required = {"y_true", "y_pred", "fit_indices", "validation_indices",
                         "validation_y_true", "validation_y_pred"}
@@ -92,10 +91,34 @@ def main():
                 errors.append(f"{subject}: JSON/NPZ accuracy mismatch")
             if pred["fit_indices"].shape != (train_samples,):
                 errors.append(f"{subject}: fit index count mismatch")
-            if pred["validation_indices"].size != 0:
-                errors.append(f"{subject}: unexpected validation indices")
-            if pred["validation_y_true"].size != 0 or pred["validation_y_pred"].size != 0:
-                errors.append(f"{subject}: unexpected validation predictions")
+            fit_indices = np.asarray(pred["fit_indices"], dtype=np.int64)
+            validation_indices = np.asarray(pred["validation_indices"], dtype=np.int64)
+            validation_y_true = np.asarray(pred["validation_y_true"], dtype=np.int64)
+            validation_y_pred = np.asarray(pred["validation_y_pred"], dtype=np.int64)
+            source_samples = train_samples
+            if has_validation:
+                validation_samples = int(protocol["validation_samples"])
+                source_samples += validation_samples
+                if validation_indices.shape != (validation_samples,):
+                    errors.append(f"{subject}: validation index count mismatch")
+                if validation_y_true.shape != (validation_samples,) or validation_y_pred.shape != (validation_samples,):
+                    errors.append(f"{subject}: validation prediction shape mismatch")
+                if validation_indices.size and not np.array_equal(
+                    np.sort(np.concatenate([fit_indices, validation_indices])),
+                    np.arange(source_samples, dtype=np.int64),
+                ):
+                    errors.append(f"{subject}: fit/validation indices do not partition source data")
+                if validation_y_pred.size and not np.all((0 <= validation_y_pred) & (validation_y_pred < 4)):
+                    errors.append(f"{subject}: validation predictions outside class range")
+                if validation_y_true.size:
+                    val_acc = float(np.mean(validation_y_true == validation_y_pred))
+                    if not close(val_acc, result.get("final_val_acc")):
+                        errors.append(f"{subject}: JSON/NPZ validation accuracy mismatch")
+            else:
+                if validation_indices.size != 0:
+                    errors.append(f"{subject}: unexpected validation indices")
+                if validation_y_true.size != 0 or validation_y_pred.size != 0:
+                    errors.append(f"{subject}: unexpected validation predictions")
         rows.append({
             "subject": subject,
             "accuracy": float(result["final_test_acc"]),

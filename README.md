@@ -33,3 +33,7 @@ diagnostics. Do not select a test-best epoch or omit low seed results.
 
 See [the current audit](results/v1_0_76_reproduction_status_20261007.md) and
 [the seed sensitivity report](results/v1_0_75_seed_sensitivity_audit_20261007.md).
+The [paired source stability check](results/v1_0_78_source_head_stability_audit_20261007.md)
+isolates the unspecified hidden ELU in two collapse conditions. Its 100%
+source-fit results are not held-out decoding results; the primary observed
+target result is unchanged.

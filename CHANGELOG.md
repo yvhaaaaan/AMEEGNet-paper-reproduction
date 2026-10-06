@@ -1,5 +1,10 @@
 # Changelog
 
+# v1.0.70 - 2026-10-06
+
+- Preregistered the corrected depth-ECA plus pre-activation-fusion source-only
+  screen after the v1.0.69 data-flow fix.
+
 # v1.0.69 - 2026-10-06
 
 - Fixed the `depth_pre_sep` fusion audit so `fusion_pre_activation` is not

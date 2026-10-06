@@ -135,7 +135,13 @@ def main():
     p.add_argument("--dropout-after-pool", action="store_true")
     p.add_argument("--no-head-dropout", action="store_true")
     p.add_argument("--max-norm", action="store_true")
+    p.add_argument("--spatial-max-norm", type=float, default=1.0,
+                   help="max L2 norm for each depthwise spatial kernel")
+    p.add_argument("--classifier-max-norm", type=float, default=0.25,
+                   help="max L2 norm for each output classifier row")
     p.add_argument("--hidden-max-norm", action="store_true")
+    p.add_argument("--hidden-max-norm-value", type=float, default=0.25,
+                   help="max L2 norm for each Dense(32) row")
     p.add_argument("--no-head-elu", action="store_true")
     p.add_argument("--reverse-sessions", action="store_true")
     p.add_argument("--no-fusion", action="store_true")
@@ -161,6 +167,10 @@ def main():
         raise ValueError("input-scale must be finite and positive")
     if a.dropout is not None and (not math.isfinite(a.dropout) or not 0 <= a.dropout < 1):
         raise ValueError("dropout must be finite and in [0,1)")
+    for name in ("spatial_max_norm", "classifier_max_norm", "hidden_max_norm_value"):
+        value = getattr(a, name)
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be finite and positive")
     checkpoint_dir = out.parent / (out.stem + "_checkpoints")
     artifacts = [out, out.with_suffix('.pt'), out.with_suffix('.npz')]
     if any(path.exists() for path in artifacts):
@@ -262,7 +272,11 @@ def main():
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
             if a.max_norm:
-                model.project_eegnet_max_norm(hidden_max=0.25 if a.hidden_max_norm else None)
+                model.project_eegnet_max_norm(
+                    spatial_max=a.spatial_max_norm,
+                    classifier_max=a.classifier_max_norm,
+                    hidden_max=(a.hidden_max_norm_value if a.hidden_max_norm else None),
+                )
             total += loss.item() * len(yb)
             preds.extend(logits.argmax(1).detach().cpu().numpy())
             ys.extend(yb.cpu().numpy())
@@ -333,6 +347,9 @@ def main():
         "head_dropout": head_dropout,
         "max_norm": a.max_norm, "head_elu": not a.no_head_elu,
         "hidden_max_norm": a.hidden_max_norm,
+        "spatial_max_norm": a.spatial_max_norm,
+        "classifier_max_norm": a.classifier_max_norm,
+        "hidden_max_norm_value": a.hidden_max_norm_value,
         "reverse_sessions": a.reverse_sessions, "fusion": not a.no_fusion,
         "eca": not a.no_eca, "bn_first": not a.no_bn_first,
         "eca_bias": a.eca_bias,

@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.53 - 2026-10-06
+
+- Exposed the spatial, classifier, and hidden Dense(32) max-norm thresholds
+  as recorded command-line parameters. Defaults preserve v1.0.52 behavior.
+- Prepared source-session-only threshold screening without changing the
+  AMEEGNet graph or using target-session labels for selection.
+
 # v1.0.52 - 2026-10-06
 
 - Added an opt-in branch-convolution bias audit. Default `bias=False` and

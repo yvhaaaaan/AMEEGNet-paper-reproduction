@@ -36,6 +36,7 @@ def main():
             "input_normalization", "strict", "paper_pooling", "dropout",
             "dropout_after_pool", "head_dropout", "max_norm", "head_elu",
             "hidden_max_norm", "fusion", "eca", "bn_first", "eca_bias",
+            "spatial_max_norm", "classifier_max_norm", "hidden_max_norm_value",
             "init_mode", "eca_stage", "fixed_fusion_channels", "reverse_sessions",
             "select_best_validation", "training_protocol",
             "norm_then_activation", "bn_eps", "bn_momentum", "seed", "epochs",

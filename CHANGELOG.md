@@ -1,5 +1,14 @@
 # Changelog
 
+# v1.0.83 - 2026-10-07
+
+- Archived the completed twelve-checkpoint frozen precision comparison,
+  independent P1/P2 evidence, and unchanged retained nine-subject accuracy.
+- The failed hidden-head source gate remains failed; no new target batch
+  or training/backend change is promoted from frozen inference results.
+- Updated reconstruction status; all39 tests pass and local-only versioning
+  is explicit. Training/model/data code and dependencies remain unchanged.
+
 # v1.0.82 - 2026-10-07
 
 - Fixed the new precision auditor's PT/JSON metadata comparison by comparing

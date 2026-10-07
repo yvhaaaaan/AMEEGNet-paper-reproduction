@@ -31,7 +31,7 @@ several implementation choices are unspecified, max-norm is an assumption,
 and the broader reconstruction history includes repeated target-labelled
 diagnostics. Do not select a test-best epoch or omit low seed results.
 
-See [the current audit](results/v1_0_76_reproduction_status_20261007.md) and
+See [the current audit](results/v1_0_83_reproduction_status_20261007.md) and
 [the seed sensitivity report](results/v1_0_75_seed_sensitivity_audit_20261007.md).
 The [paired source stability check](results/v1_0_78_source_head_stability_audit_20261007.md)
 isolates the unspecified hidden ELU in two collapse conditions. Its 100%
@@ -42,3 +42,7 @@ The [paired source-validation gate](results/v1_0_80_source_head_validation_audit
 completed: hidden ELU77.4425%, noELU77.0115%, paired difference-0.4310pp.
 Integrity QA passed, but the performance gate failed; the noELU target batch
 was not launched. The training-mode stability finding is not a validation gain.
+
+The [frozen cuDNN precision diagnosis](results/v1_0_82_frozen_tf32_audit_20261007.md)
+reproduced all twelve controls under both permissions:0/696 source predictions
+changed. This is not a training-accuracy result and does not override the gate.

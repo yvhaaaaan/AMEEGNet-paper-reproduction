@@ -37,3 +37,8 @@ The [paired source stability check](results/v1_0_78_source_head_stability_audit_
 isolates the unspecified hidden ELU in two collapse conditions. Its 100%
 source-fit results are not held-out decoding results; the primary observed
 target result is unchanged.
+
+The [paired source-validation gate](results/v1_0_80_source_head_validation_audit_20261007.md)
+completed: hidden ELU77.4425%, noELU77.0115%, paired difference-0.4310pp.
+Integrity QA passed, but the performance gate failed; the noELU target batch
+was not launched. The training-mode stability finding is not a validation gain.

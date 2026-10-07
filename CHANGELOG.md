@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.81 - 2026-10-07
+
+- Archived all fifteen v1.0.80 source-only runs and independent P2 audit;
+  the registered validation gate failed and no target batch was launched.
+- Added a frozen-source cuDNN TF32 permission diagnostic and tests. This
+  changes no training/model/data code or previously reported target scores.
+
 # v1.0.80 - 2026-10-07
 
 - Preregistered a paired, source-only final-epoch validation gate for the

@@ -16,6 +16,13 @@ from run_s01 import (
 )
 
 
+def verify_recorded_result(checkpoint_result, json_result):
+    # PT retains tuples and TorchVersion; compare the same JSON representation
+    # used by the training runner instead of their Python container types.
+    if json.loads(json.dumps(checkpoint_result, allow_nan=False)) != json_result:
+        raise AssertionError("PT and JSON results differ")
+
+
 def compare_logits(fp32, tf32_allowed, labels):
     if fp32.ndim != 2 or fp32.shape != tf32_allowed.shape or fp32.shape[1] != 4:
         raise ValueError("expected equal (N,4) logits")
@@ -97,8 +104,7 @@ def audit_checkpoint(checkpoint):
         raise AssertionError("validation labels differ from source cache")
     x = normalize_trials(x[indices] * config["input_scale"], config["input_normalization"])
     saved = torch.load(checkpoint, map_location="cpu")
-    if saved["result"] != config:
-        raise AssertionError("PT and JSON results differ")
+    verify_recorded_result(saved["result"], config)
     configure_reproducibility(config["seed"], True)
     model = construct(config).to("cuda").eval()
     model.load_state_dict(saved["model"], strict=True)

@@ -3,11 +3,20 @@ import unittest
 import torch
 from torch import nn
 
-from audit_frozen_tf32 import compare_logits, precision_pair
+from audit_frozen_tf32 import compare_logits, precision_pair, verify_recorded_result
 from run_s01 import state_fingerprint
 
 
 class FrozenTF32Tests(unittest.TestCase):
+    def test_pt_metadata_matches_its_serialized_json_types(self):
+        from torch.torch_version import TorchVersion
+
+        saved = {"betas": (0.9, 0.999), "torch": TorchVersion("1.12.1+cu116")}
+        recorded = {"betas": [0.9, 0.999], "torch": "1.12.1+cu116"}
+        verify_recorded_result(saved, recorded)
+        with self.assertRaises(AssertionError):
+            verify_recorded_result(saved, {**recorded, "betas": [0.8, 0.999]})
+
     def test_identical_logits_have_no_change(self):
         logits = torch.eye(4)
         result = compare_logits(logits, logits.clone(), torch.arange(4))

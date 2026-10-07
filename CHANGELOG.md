@@ -1,5 +1,13 @@
 # Changelog
 
+# v1.0.82 - 2026-10-07
+
+- Fixed the new precision auditor's PT/JSON metadata comparison by comparing
+  their common JSON representation, including tuples and TorchVersion.
+- Added a regression test; P1 v1.0.81 failed before GPU inference and no
+  existing experiment or dependency was changed. The diagnosis protocol is
+  unchanged and requires a repeated P1 before execution.
+
 # v1.0.81 - 2026-10-07
 
 - Archived all fifteen v1.0.80 source-only runs and independent P2 audit;

@@ -1,5 +1,12 @@
 # Changelog
 
+# v1.0.80 - 2026-10-07
+
+- Preregistered a paired, source-only final-epoch validation gate for the
+  unspecified hidden activation, including the previously collapsed A06.
+- Added a source-validation auditor and rejection tests; no training/model
+  code changed. Seeds and promotion rules are fixed before new runs.
+
 # v1.0.79 - 2026-10-07
 
 - Strengthened frozen diagnostic provenance with enforced training-source
